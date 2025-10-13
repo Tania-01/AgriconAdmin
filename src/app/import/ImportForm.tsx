@@ -3,9 +3,12 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { FaSpinner } from 'react-icons/fa';
+import Navbar from '../navbar/Navbar';
 
 export default function ImportPage() {
     const [file, setFile] = useState<File | null>(null);
+    const [city, setCity] = useState('');
+    const [object, setObject] = useState('');
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [dragActive, setDragActive] = useState(false);
@@ -46,19 +49,29 @@ export default function ImportPage() {
             setMessage('Будь ласка, виберіть файл');
             return;
         }
+        if (!city || !object) {
+            setMessage("Будь ласка, введіть 'Місто' та 'Об’єкт'");
+            return;
+        }
 
         const formData = new FormData();
         formData.append('file', file);
+        formData.append('city', city);
+        formData.append('object', object);
 
         setLoading(true);
         try {
-            const res = await axios.post('http://localhost:3002/work/import', formData, {
-                headers: {
-                    'Content-Type': 'multipart/form-data',
-                },
-            });
+            const res = await axios.post(
+                'https://agricon-backend-1.onrender.com/works/import',
+                formData,
+                {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                }
+            );
             setMessage(res.data.message);
             setFile(null);
+            setCity('');
+            setObject('');
         } catch (error: any) {
             setMessage(error.response?.data?.message || 'Помилка при завантаженні');
         } finally {
@@ -67,59 +80,84 @@ export default function ImportPage() {
     };
 
     return (
-        <div className="p-6 max-w-md mx-auto bg-white dark:bg-black rounded-xl shadow-md space-y-6 transition-colors">
-            <h1 className="text-2xl font-bold text-black dark:text-white">Імпорт робіт з Excel</h1>
+        <div className="min-h-screen bg-white">
+            {/* 🔺 Навбар */}
+            <Navbar />
 
-            {/* Dropzone */}
-            <div
-                onDragOver={handleDragOver}
-                onDragLeave={handleDragLeave}
-                onDrop={handleDrop}
-                className={`w-full h-32 border-2 rounded flex items-center justify-center text-sm cursor-pointer transition-colors
-        ${dragActive ? 'border-black dark:border-white bg-gray-100 dark:bg-gray-800' : 'border-gray-400 dark:border-gray-600'}
-        `}
-            >
-                <label htmlFor="file-upload" className="text-black dark:text-white cursor-pointer text-center">
-                    Перетягніть файл сюди або натисніть для вибору
-                </label>
-                <input
-                    id="file-upload"
-                    type="file"
-                    accept=".xlsx, .xls"
-                    onChange={handleFileChange}
-                    className="hidden"
-                />
-            </div>
+            <div className="p-6 max-w-lg mx-auto bg-white text-black rounded-xl shadow-lg border border-red-300 mt-10">
+                <h1 className="text-3xl font-bold text-center text-red-600 mb-6">
+                    Імпорт робіт з Excel
+                </h1>
 
-            {/* Preview filename */}
-            {file && (
-                <p className="text-sm text-gray-700 dark:text-gray-300 italic">
-                    Вибраний файл: <strong>{file.name}</strong>
-                </p>
-            )}
+                {/* Поля Місто та Об’єкт */}
+                <div className="space-y-3 mb-4">
+                    <input
+                        type="text"
+                        placeholder="Місто"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        className="w-full border border-red-400 focus:ring-2 focus:ring-red-500 px-3 py-2 rounded outline-none"
+                    />
+                    <input
+                        type="text"
+                        placeholder="Об’єкт"
+                        value={object}
+                        onChange={(e) => setObject(e.target.value)}
+                        className="w-full border border-red-400 focus:ring-2 focus:ring-red-500 px-3 py-2 rounded outline-none"
+                    />
+                </div>
 
-            {/* Upload button */}
-            <button
-                onClick={handleUpload}
-                disabled={loading}
-                className="w-full flex items-center justify-center bg-black text-white dark:bg-white dark:text-black px-4 py-2 rounded hover:bg-gray-800 dark:hover:bg-gray-300 font-semibold transition-colors disabled:opacity-60"
-            >
-                {loading ? (
-                    <>
-                        <FaSpinner className="animate-spin mr-2" />
-                        Завантаження...
-                    </>
-                ) : (
-                    'Завантажити'
+                {/* Dropzone */}
+                <div
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleDrop}
+                    className={`w-full h-32 border-2 rounded-md flex items-center justify-center text-sm cursor-pointer transition-colors
+                    ${dragActive ? 'border-red-600 bg-red-50' : 'border-red-400 hover:bg-red-50'}
+                    `}
+                >
+                    <label htmlFor="file-upload" className="text-red-700 font-medium cursor-pointer text-center">
+                        Перетягніть файл сюди або натисніть для вибору
+                    </label>
+                    <input
+                        id="file-upload"
+                        type="file"
+                        accept=".xlsx, .xls"
+                        onChange={handleFileChange}
+                        className="hidden"
+                    />
+                </div>
+
+                {/* Назва вибраного файлу */}
+                {file && (
+                    <p className="text-sm text-gray-700 italic mt-2">
+                        Вибраний файл: <strong className="text-red-600">{file.name}</strong>
+                    </p>
                 )}
-            </button>
 
-            {/* Message */}
-            {message && (
-                <p className="mt-4 text-sm text-gray-700 dark:text-gray-200 border-t border-gray-200 dark:border-gray-700 pt-4">
-                    {message}
-                </p>
-            )}
+                {/* Кнопка завантаження */}
+                <button
+                    onClick={handleUpload}
+                    disabled={loading}
+                    className="w-full flex items-center justify-center bg-red-600 text-white px-4 py-2 rounded mt-4 hover:bg-red-700 font-semibold transition disabled:opacity-60"
+                >
+                    {loading ? (
+                        <>
+                            <FaSpinner className="animate-spin mr-2" />
+                            Завантаження...
+                        </>
+                    ) : (
+                        'Завантажити'
+                    )}
+                </button>
+
+                {/* Повідомлення */}
+                {message && (
+                    <p className="mt-4 text-center text-sm text-red-700 border-t border-red-200 pt-4">
+                        {message}
+                    </p>
+                )}
+            </div>
         </div>
     );
 }
