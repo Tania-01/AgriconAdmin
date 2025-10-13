@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import axios from "axios";
-import Navbar from "../navbar/Navbar"; // імпорт навбару
+import Link from "next/link";
 
 interface Work {
     _id: string;
@@ -16,15 +16,16 @@ interface Work {
 export default function ReportsPage() {
     const [objects, setObjects] = useState<string[]>([]);
     const [selectedObject, setSelectedObject] = useState<string>("");
-    const [format, setFormat] = useState<"excel" | "pdf">("excel");
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
 
     useEffect(() => {
         const fetchObjects = async () => {
             try {
-                const res = await axios.get("https://agricon-backend-1.onrender.com/works/full-data");
-                const objs = Array.from(new Set(res.data.map((w: Work) => w.object)));
+                const res = await axios.get<Work[]>(
+                    "https://agricon-backend-1.onrender.com/works/full-data"
+                );
+                const objs = Array.from(new Set(res.data.map((w) => w.object)));
                 setObjects(objs);
             } catch (err) {
                 console.error(err);
@@ -32,6 +33,11 @@ export default function ReportsPage() {
         };
         fetchObjects();
     }, []);
+
+    const sanitizeObjectName = (name: string) => {
+        // Замінюємо всі заборонені символи на "_"
+        return name.replace(/[*?:\\/\[\]]/g, "_");
+    };
 
     const handleDownload = async () => {
         if (!selectedObject) {
@@ -43,18 +49,20 @@ export default function ReportsPage() {
         setMessage("");
 
         try {
+            // Відправляємо на бек назву об’єкта у "сирому" вигляді
             const res = await axios.post(
                 "https://agricon-backend-1.onrender.com/works/report",
-                { object: selectedObject, format },
+                { object: selectedObject },
                 { responseType: "blob" }
             );
 
             const url = window.URL.createObjectURL(new Blob([res.data]));
             const link = document.createElement("a");
+            const safeName = sanitizeObjectName(selectedObject); // замінюємо символи для файлу
             link.href = url;
             link.setAttribute(
                 "download",
-                `${selectedObject}_report.${format === "excel" ? "xlsx" : "pdf"}`
+                `${safeName}_report_all.xlsx`
             );
             document.body.appendChild(link);
             link.click();
@@ -69,7 +77,16 @@ export default function ReportsPage() {
 
     return (
         <div className="min-h-screen bg-white text-black">
-            <Navbar /> {/* 🔺 Навбар зверху */}
+            <nav className="bg-red-600 text-white py-4 px-8 shadow-md">
+                <div className="max-w-6xl mx-auto flex justify-between items-center">
+                    <h1 className="text-2xl font-bold">Адмінка</h1>
+                    <div className="space-x-6">
+                        <Link href="/" className="hover:underline">Головна</Link>
+                        <Link href="/objects" className="hover:underline">Об’єкти</Link>
+                        <Link href="/reports" className="hover:underline">Звіти</Link>
+                    </div>
+                </div>
+            </nav>
 
             <div className="p-8 max-w-4xl mx-auto">
                 <h1 className="text-4xl font-bold mb-6 text-red-600">Генерація звітів</h1>
@@ -87,18 +104,6 @@ export default function ReportsPage() {
                                 {obj}
                             </option>
                         ))}
-                    </select>
-                </div>
-
-                <div className="mb-6">
-                    <label className="block mb-2 text-red-600 font-semibold">Формат звіту:</label>
-                    <select
-                        value={format}
-                        onChange={(e) => setFormat(e.target.value as "excel" | "pdf")}
-                        className="w-full p-3 rounded border-2 border-red-600 bg-white text-black focus:outline-none focus:ring-2 focus:ring-red-500"
-                    >
-                        <option value="excel">Excel</option>
-                        <option value="pdf">PDF</option>
                     </select>
                 </div>
 

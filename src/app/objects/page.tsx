@@ -100,24 +100,21 @@ export default function ObjectsAndWorksPage() {
     };
 
     const handleAddNewWork = async () => {
-        if (!selectedObject || !selectedCity) return;
+        if (!selectedObject) return;
 
         try {
             await axios.post('https://agricon-backend-1.onrender.com/works/extraWork', {
-                city: selectedCity,
-                object: selectedObject,
-                category: newWork.category,
+                objectName: selectedObject,
                 name: newWork.name,
                 unit: newWork.unit,
-                volume: parseFloat(newWork.volume),
-                done: parseFloat(newWork.done),
+                volume: newWork.volume, // сервер сам конвертує в число
             });
 
             alert("Роботу успішно додано!");
             setShowNewWorkForm(false);
             setNewWork({ category: "", name: "", unit: "", volume: "", done: "" });
 
-            // оновити список
+            // оновлюємо список робіт
             const res = await axios.get('https://agricon-backend-1.onrender.com/works/full-data');
             setWorks(res.data);
         } catch (err) {
@@ -127,11 +124,10 @@ export default function ObjectsAndWorksPage() {
 
     return (
         <div className="min-h-screen bg-white text-black">
-            <Navbar /> {/* 🔺 Навбар зверху */}
+            <Navbar /> {/* Навбар зверху */}
 
             <div className="p-6">
-
-                {/* === МІСТА === */}
+                {/* МІСТА */}
                 <h2 className="text-xl font-semibold mb-2">Оберіть місцерозташування:</h2>
                 <div className="flex flex-wrap gap-2 mb-6">
                     {cities.map((city, i) => (
@@ -152,7 +148,7 @@ export default function ObjectsAndWorksPage() {
                     ))}
                 </div>
 
-                {/* === ОБ’ЄКТИ === */}
+                {/* ОБ’ЄКТИ */}
                 {selectedCity && (
                     <>
                         <h2 className="text-xl font-semibold mb-2 text-red-700">
@@ -176,7 +172,7 @@ export default function ObjectsAndWorksPage() {
                     </>
                 )}
 
-                {/* === ДЕТАЛІ ОБ’ЄКТА === */}
+                {/* ДЕТАЛІ ОБ’ЄКТА */}
                 {selectedObject && (
                     <div className="border-t border-gray-300 pt-6">
                         <h2 className="text-xl font-semibold mb-3 text-red-600">
@@ -222,7 +218,7 @@ export default function ObjectsAndWorksPage() {
                             </div>
                         </div>
 
-                        {/* Таблиця */}
+                        {/* Таблиця робіт */}
                         <table className="w-full border border-red-300 shadow-sm">
                             <thead className="bg-red-600 text-white">
                             <tr>
@@ -270,7 +266,7 @@ export default function ObjectsAndWorksPage() {
                                 <div className="grid grid-cols-2 gap-2">
                                     <input
                                         type="text"
-                                        placeholder="Категорія"
+                                        placeholder="Категорія (ігнорується)"
                                         value={newWork.category}
                                         onChange={(e) => setNewWork({ ...newWork, category: e.target.value })}
                                         className="border p-2 rounded"
@@ -299,7 +295,7 @@ export default function ObjectsAndWorksPage() {
                                     />
                                     <input
                                         type="number"
-                                        placeholder="Виконано"
+                                        placeholder="Виконано (ігнорується)"
                                         value={newWork.done}
                                         onChange={(e) => setNewWork({ ...newWork, done: e.target.value })}
                                         className="border p-2 rounded"
