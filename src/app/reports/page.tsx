@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import Navbar from '../components/Navbar'; // підключаємо свій Navbar
+import Navbar from '../navbar/Navbar';
 
 interface Work {
     _id: string;
