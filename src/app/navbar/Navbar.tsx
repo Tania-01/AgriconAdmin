@@ -9,7 +9,6 @@ const Navbar = () => {
     const links = [
         { href: "/", title: "Головна" },
         { href: "/import", title: "Імпорт" },
-        { href: "/users", title: "Користувачі" },
         { href: "/reports", title: "Звіти" },
     ];
 
