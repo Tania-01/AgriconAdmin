@@ -1,31 +1,37 @@
-import React, { useEffect, useRef } from 'react';
-import dynamic from 'next/dynamic';
+'use client';
 
-const FrappeGanttLib = dynamic(() => import('frappe-gantt'), { ssr: false });
+import { useEffect, useRef } from 'react';
 
 interface Task {
     id: string;
     name: string;
     start: string;
     end: string;
-    progress?: number;
+    progress: number;
 }
 
-interface FrappeGanttProps {
+interface GanttWrapperProps {
     tasks: Task[];
-    viewMode?: 'Day' | 'Week' | 'Month' | 'Quarter';
+    viewMode?: 'Day' | 'Week' | 'Month';
 }
 
-const FrappeGanttWrapper: React.FC<FrappeGanttProps> = ({ tasks, viewMode }) => {
+export default function GanttWrapper({ tasks, viewMode }: GanttWrapperProps) {
     const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        if (containerRef.current && tasks.length) {
-            new FrappeGanttLib(containerRef.current, tasks, { view_mode: viewMode || 'Day' });
-        }
+        const loadGantt = async () => {
+            const { default: FrappeGantt } = await import('frappe-gantt');
+            if (containerRef.current && tasks.length) {
+                // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+                // @ts-ignore FrappeGantt не має типів
+                new FrappeGantt(containerRef.current, tasks, {
+                    view_mode: viewMode || 'Day',
+                });
+            }
+        };
+
+        loadGantt();
     }, [tasks, viewMode]);
 
     return <div ref={containerRef}></div>;
-};
-
-export default FrappeGanttWrapper;
+}
