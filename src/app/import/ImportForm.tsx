@@ -12,6 +12,7 @@ export default function ImportPage() {
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
     const [dragActive, setDragActive] = useState(false);
+    const [hasSubname, setHasSubname] = useState(false); // новий стан для чекбокса
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0];
@@ -58,6 +59,7 @@ export default function ImportPage() {
         formData.append('file', file);
         formData.append('city', city);
         formData.append('object', object);
+        formData.append('hasSubname', hasSubname.toString()); // передаємо прапорець на бекенд
 
         setLoading(true);
         try {
@@ -72,6 +74,7 @@ export default function ImportPage() {
             setFile(null);
             setCity('');
             setObject('');
+            setHasSubname(false);
         } catch (error: any) {
             setMessage(error.response?.data?.message || 'Помилка при завантаженні');
         } finally {
@@ -81,7 +84,6 @@ export default function ImportPage() {
 
     return (
         <div className="min-h-screen bg-white">
-            {/* 🔺 Навбар */}
             <Navbar />
 
             <div className="p-6 max-w-lg mx-auto bg-white text-black rounded-xl shadow-lg border border-red-300 mt-10">
@@ -89,7 +91,6 @@ export default function ImportPage() {
                     Імпорт робіт з Excel
                 </h1>
 
-                {/* Поля Місто та Об’єкт */}
                 <div className="space-y-3 mb-4">
                     <input
                         type="text"
@@ -107,7 +108,20 @@ export default function ImportPage() {
                     />
                 </div>
 
-                {/* Dropzone */}
+                {/* Чекбокс для subname */}
+                <div className="mb-4 flex items-center gap-2">
+                    <input
+                        type="checkbox"
+                        id="hasSubname"
+                        checked={hasSubname}
+                        onChange={() => setHasSubname(prev => !prev)}
+                        className="w-4 h-4"
+                    />
+                    <label htmlFor="hasSubname" className="text-red-700 font-medium">
+                        Перший рядок після заголовку – підназва
+                    </label>
+                </div>
+
                 <div
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
@@ -128,14 +142,12 @@ export default function ImportPage() {
                     />
                 </div>
 
-                {/* Назва вибраного файлу */}
                 {file && (
                     <p className="text-sm text-gray-700 italic mt-2">
                         Вибраний файл: <strong className="text-red-600">{file.name}</strong>
                     </p>
                 )}
 
-                {/* Кнопка завантаження */}
                 <button
                     onClick={handleUpload}
                     disabled={loading}
@@ -151,7 +163,6 @@ export default function ImportPage() {
                     )}
                 </button>
 
-                {/* Повідомлення */}
                 {message && (
                     <p className="mt-4 text-center text-sm text-red-700 border-t border-red-200 pt-4">
                         {message}

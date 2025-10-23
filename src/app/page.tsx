@@ -8,6 +8,7 @@ export default function HomePage() {
         { href: "/objects", title: "Об’єкти", desc: "Перегляд усіх об’єктів і робіт" },
         { href: "/import", title: "Імпорт файлів", desc: "Завантаження Excel з роботами" },
         { href: "/reports", title: "Звіти", desc: "Генерація звітів Excel/PDF" },
+        
     ];
 
     return (

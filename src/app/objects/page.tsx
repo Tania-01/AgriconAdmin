@@ -60,15 +60,12 @@ export default function ObjectsAndWorksPage() {
     }, []);
 
     const cities = Array.from(new Set(works.map(w => w.city)));
-
     const objects = selectedCity
         ? Array.from(new Set(works.filter(w => w.city === selectedCity).map(w => w.object)))
         : [];
-
     const filteredWorks = selectedObject
         ? works.filter(w => w.object === selectedObject)
         : [];
-
     const currentResponsibles = selectedObject
         ? responsibles.find(r => r.objectName === selectedObject)?.responsibles || []
         : [];
@@ -107,14 +104,13 @@ export default function ObjectsAndWorksPage() {
                 objectName: selectedObject,
                 name: newWork.name,
                 unit: newWork.unit,
-                volume: newWork.volume, // сервер сам конвертує в число
+                volume: newWork.volume,
             });
 
             alert("Роботу успішно додано!");
             setShowNewWorkForm(false);
             setNewWork({ category: "", name: "", unit: "", volume: "", done: "" });
 
-            // оновлюємо список робіт
             const res = await axios.get('https://agricon-backend-1.onrender.com/works/full-data');
             setWorks(res.data);
         } catch (err) {
@@ -122,21 +118,30 @@ export default function ObjectsAndWorksPage() {
         }
     };
 
+    const handleDeleteObject = async (objName: string) => {
+        if (!confirm(`Видалити об’єкт "${objName}"?`)) return;
+
+        try {
+            await axios.delete(`https://agricon-backend-1.onrender.com/works/object/${encodeURIComponent(objName)}`);
+            const res = await axios.get('https://agricon-backend-1.onrender.com/works/full-data');
+            setWorks(res.data);
+            if (selectedObject === objName) setSelectedObject(null);
+        } catch (err) {
+            console.error('Помилка видалення об’єкта:', err);
+        }
+    };
+
     return (
         <div className="min-h-screen bg-white text-black">
-            <Navbar /> {/* Навбар зверху */}
+            <Navbar />
 
             <div className="p-6">
-                {/* МІСТА */}
                 <h2 className="text-xl font-semibold mb-2">Оберіть місцерозташування:</h2>
                 <div className="flex flex-wrap gap-2 mb-6">
                     {cities.map((city, i) => (
                         <button
                             key={i}
-                            onClick={() => {
-                                setSelectedCity(city);
-                                setSelectedObject(null);
-                            }}
+                            onClick={() => { setSelectedCity(city); setSelectedObject(null); }}
                             className={`px-4 py-2 rounded-md border font-medium transition ${
                                 selectedCity === city
                                     ? 'bg-red-600 text-white border-red-700'
@@ -148,38 +153,38 @@ export default function ObjectsAndWorksPage() {
                     ))}
                 </div>
 
-                {/* ОБ’ЄКТИ */}
                 {selectedCity && (
                     <>
-                        <h2 className="text-xl font-semibold mb-2 text-red-700">
-                            Проекти у місті: {selectedCity}
-                        </h2>
+                        <h2 className="text-xl font-semibold mb-2 text-red-700">Проекти у місті: {selectedCity}</h2>
                         <div className="flex flex-wrap gap-2 mb-6">
                             {objects.map((obj, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => setSelectedObject(obj)}
-                                    className={`px-4 py-2 rounded-md border font-medium transition ${
-                                        selectedObject === obj
-                                            ? 'bg-red-500 text-white border-red-600'
-                                            : 'bg-white text-red-600 border-red-600 hover:bg-red-50'
-                                    }`}
-                                >
-                                    {obj}
-                                </button>
+                                <div key={i} className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setSelectedObject(obj)}
+                                        className={`px-4 py-2 rounded-md border font-medium transition ${
+                                            selectedObject === obj
+                                                ? 'bg-red-500 text-white border-red-600'
+                                                : 'bg-white text-red-600 border-red-600 hover:bg-red-50'
+                                        }`}
+                                    >
+                                        {obj}
+                                    </button>
+                                    <button
+                                        onClick={() => handleDeleteObject(obj)}
+                                        className="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 transition"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
                             ))}
                         </div>
                     </>
                 )}
 
-                {/* ДЕТАЛІ ОБ’ЄКТА */}
                 {selectedObject && (
                     <div className="border-t border-gray-300 pt-6">
-                        <h2 className="text-xl font-semibold mb-3 text-red-600">
-                            Проект: {selectedObject}
-                        </h2>
+                        <h2 className="text-xl font-semibold mb-3 text-red-600">Проект: {selectedObject}</h2>
 
-                        {/* Відповідальні */}
                         <div className="mb-4 bg-red-50 p-3 rounded-md border border-red-200">
                             <div className="mb-2">
                                 <span className="font-semibold">Поточні відповідальні:</span>
@@ -195,7 +200,6 @@ export default function ObjectsAndWorksPage() {
                                     <span className="font-semibold text-gray-600"> не вказано</span>
                                 )}
                             </div>
-
                             <div className="flex gap-2">
                                 <select
                                     value={selectedUserId}
@@ -218,7 +222,6 @@ export default function ObjectsAndWorksPage() {
                             </div>
                         </div>
 
-                        {/* Таблиця робіт */}
                         <table className="w-full border border-red-300 shadow-sm">
                             <thead className="bg-red-600 text-white">
                             <tr>
@@ -231,25 +234,17 @@ export default function ObjectsAndWorksPage() {
                             </thead>
                             <tbody>
                             {filteredWorks.map((work, i) => (
-                                <tr
-                                    key={work._id || i}
-                                    className={i % 2 === 0 ? 'bg-white' : 'bg-red-50'}
-                                >
+                                <tr key={work._id || i} className={i % 2 === 0 ? 'bg-white' : 'bg-red-50'}>
                                     <td className="border px-2 py-1">{work.category}</td>
                                     <td className="border px-2 py-1">{work.name}</td>
                                     <td className="border px-2 py-1">{work.unit}</td>
-                                    <td className="border px-2 py-1">
-                                        {typeof work.volume === "number" ? work.volume.toFixed(2) : work.volume}
-                                    </td>
-                                    <td className="border px-2 py-1">
-                                        {typeof work.done === "number" ? work.done.toFixed(2) : work.done}
-                                    </td>
+                                    <td className="border px-2 py-1">{typeof work.volume === "number" ? work.volume.toFixed(2) : work.volume}</td>
+                                    <td className="border px-2 py-1">{typeof work.done === "number" ? work.done.toFixed(2) : work.done}</td>
                                 </tr>
                             ))}
                             </tbody>
                         </table>
 
-                        {/* Кнопка додавання */}
                         <div className="flex justify-end mt-4">
                             <button
                                 onClick={() => setShowNewWorkForm(prev => !prev)}
@@ -259,7 +254,6 @@ export default function ObjectsAndWorksPage() {
                             </button>
                         </div>
 
-                        {/* Форма нової роботи */}
                         {showNewWorkForm && (
                             <div className="mt-4 p-4 border border-red-300 rounded-md bg-red-50">
                                 <h3 className="font-semibold text-red-700 mb-2">Нова робота</h3>
