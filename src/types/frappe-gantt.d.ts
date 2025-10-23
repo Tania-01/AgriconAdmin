@@ -1,23 +1,35 @@
 declare module 'frappe-gantt' {
-    import React from 'react';
-
     export interface Task {
         id: string;
         name: string;
-        start: string;
-        end: string;
-        progress?: number;
+        start: string | Date;
+        end: string | Date;
+        progress: number;
         dependencies?: string;
-        custom_class?: string;
     }
 
-    export interface FrappeGanttProps {
-        tasks: Task[];
-        viewMode?: 'Day' | 'Week' | 'Month' | 'Quarter';
-        onClick?: (task: Task) => void;
-        onDateChange?: (task: Task, start: string, end: string) => void;
-        onProgressChange?: (task: Task, progress: number) => void;
+    export interface FrappeGanttOptions {
+        header_height?: number;
+        column_width?: number;
+        step?: number;
+        view_modes?: string[];
+        bar_height?: number;
+        bar_corner_radius?: number;
+        arrow_curve?: number;
+        padding?: number;
+        view_mode?: 'Quarter Day' | 'Half Day' | 'Day' | 'Week' | 'Month';
+        date_format?: string;
+        custom_popup_html?: (task: Task) => string;
+        language?: string;
     }
 
-    export default class FrappeGantt extends React.Component<FrappeGanttProps> {}
+    export default class FrappeGantt {
+        constructor(
+            wrapper: HTMLElement,
+            tasks: Task[],
+            options?: FrappeGanttOptions
+        );
+        change_view_mode(mode: string): void;
+        refresh(tasks: Task[]): void;
+    }
 }
