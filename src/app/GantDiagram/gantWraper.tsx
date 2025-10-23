@@ -21,8 +21,6 @@ const FrappeGanttWrapper: React.FC<FrappeGanttProps> = ({ tasks, viewMode }) => 
 
     useEffect(() => {
         if (containerRef.current && tasks.length) {
-            // @ts-expect-error
-
             new FrappeGanttLib(containerRef.current, tasks, { view_mode: viewMode || 'Day' });
         }
     }, [tasks, viewMode]);
