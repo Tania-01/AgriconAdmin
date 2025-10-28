@@ -12,6 +12,7 @@ interface Work {
     unit: string;
     volume: number;
     done: number;
+    appName?: string; // нове поле для додатку
 }
 
 interface User {
@@ -169,12 +170,6 @@ export default function ObjectsAndWorksPage() {
                                     >
                                         {obj}
                                     </button>
-                                    <button
-                                        onClick={() => handleDeleteObject(obj)}
-                                        className="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700 transition"
-                                    >
-                                        ×
-                                    </button>
                                 </div>
                             ))}
                         </div>
@@ -227,6 +222,7 @@ export default function ObjectsAndWorksPage() {
                             <tr>
                                 <th className="border px-2 py-1">Категорія</th>
                                 <th className="border px-2 py-1">Назва роботи</th>
+                                <th className="border px-2 py-1">Назва для додатку</th>
                                 <th className="border px-2 py-1">Одиниця</th>
                                 <th className="border px-2 py-1">Обсяг</th>
                                 <th className="border px-2 py-1">Виконано</th>
@@ -237,6 +233,30 @@ export default function ObjectsAndWorksPage() {
                                 <tr key={work._id || i} className={i % 2 === 0 ? 'bg-white' : 'bg-red-50'}>
                                     <td className="border px-2 py-1">{work.category}</td>
                                     <td className="border px-2 py-1">{work.name}</td>
+                                    <td className="border px-2 py-1">
+                                        <input
+                                            type="text"
+                                            value={work.appName || ""}
+                                            onChange={e => {
+                                                const value = e.target.value;
+                                                setWorks(prev =>
+                                                    prev.map(w =>
+                                                        w._id === work._id ? { ...w, appName: value } : w
+                                                    )
+                                                );
+                                            }}
+                                            onBlur={async () => {
+                                                try {
+                                                    await axios.put(`https://agricon-backend-1.onrender.com/works/${work._id}/app-name`, {
+                                                        appName: work.appName || ""
+                                                    });
+                                                } catch (err) {
+                                                    console.error("Помилка оновлення назви для додатку:", err);
+                                                }
+                                            }}
+                                            className="border px-1 py-0.5 rounded w-full"
+                                        />
+                                    </td>
                                     <td className="border px-2 py-1">{work.unit}</td>
                                     <td className="border px-2 py-1">{typeof work.volume === "number" ? work.volume.toFixed(2) : work.volume}</td>
                                     <td className="border px-2 py-1">{typeof work.done === "number" ? work.done.toFixed(2) : work.done}</td>
