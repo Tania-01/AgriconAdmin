@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface Work {
     _id: string;
@@ -19,18 +20,24 @@ export default function ReportsPage() {
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
     const [token, setToken] = useState<string | null>(null);
+    const router = useRouter();
 
     useEffect(() => {
-        // перевірка на браузер
         if (typeof window !== "undefined") {
             const storedToken = localStorage.getItem("token");
-            setToken(storedToken);
+            if (!storedToken) {
+                // користувач не увійшов → редірект на /
+                router.push("/");
+            } else {
+                setToken(storedToken);
+            }
         }
-    }, []);
+    }, [router]);
 
     useEffect(() => {
         const fetchObjects = async () => {
-            if (!token) return; // чекати поки токен з'явиться
+            if (!token) return;
+
             try {
                 const res = await axios.get<Work[]>(
                     "https://agricon-backend-1.onrender.com/works/full-data",
@@ -41,9 +48,7 @@ export default function ReportsPage() {
                     }
                 );
 
-                const objs = Array.from(new Set(res.data.map((w) => w.object))).filter(
-                    Boolean
-                );
+                const objs = Array.from(new Set(res.data.map((w) => w.object))).filter(Boolean);
                 setObjects(objs);
             } catch (err: any) {
                 console.error(err);
@@ -66,6 +71,7 @@ export default function ReportsPage() {
 
         if (!token) {
             setMessage("Неавторизований користувач");
+            router.push("/");
             return;
         }
 
@@ -106,15 +112,9 @@ export default function ReportsPage() {
                 <div className="max-w-6xl mx-auto flex justify-between items-center">
                     <h1 className="text-2xl font-bold">Адмінка</h1>
                     <div className="space-x-6">
-                        <Link href="/" className="hover:underline">
-                            Головна
-                        </Link>
-                        <Link href="/objects" className="hover:underline">
-                            Об’єкти
-                        </Link>
-                        <Link href="/reports" className="hover:underline">
-                            Звіти
-                        </Link>
+                        <Link href="/" className="hover:underline">Головна</Link>
+                        <Link href="/objects" className="hover:underline">Об’єкти</Link>
+                        <Link href="/reports" className="hover:underline">Звіти</Link>
                     </div>
                 </div>
             </nav>
@@ -123,9 +123,7 @@ export default function ReportsPage() {
                 <h1 className="text-4xl font-bold mb-6 text-red-600">Генерація звітів</h1>
 
                 <div className="mb-6">
-                    <label className="block mb-2 text-red-600 font-semibold">
-                        Оберіть об’єкт:
-                    </label>
+                    <label className="block mb-2 text-red-600 font-semibold">Оберіть об’єкт:</label>
                     <select
                         value={selectedObject}
                         onChange={(e) => setSelectedObject(e.target.value)}
@@ -133,9 +131,7 @@ export default function ReportsPage() {
                     >
                         <option value="">-- Оберіть --</option>
                         {objects.map((obj, i) => (
-                            <option key={i} value={obj}>
-                                {obj}
-                            </option>
+                            <option key={i} value={obj}>{obj}</option>
                         ))}
                     </select>
                 </div>
