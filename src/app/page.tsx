@@ -1,9 +1,25 @@
 'use client';
 
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Navbar from "./navbar/Navbar";
 
 export default function HomePage() {
+    const router = useRouter();
+
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        const expires = localStorage.getItem('tokenExpiry');
+
+        // Якщо токена немає або він прострочений — перенаправляємо на логін
+        if (!token || !expires || Date.now() > Number(expires)) {
+            localStorage.removeItem('token');
+            localStorage.removeItem('tokenExpiry');
+            router.push('/LoginPage');
+        }
+    }, [router]);
+
     const links = [
         { href: "/objects", title: "Об’єкти", desc: "Перегляд усіх об’єктів і робіт" },
         { href: "/import", title: "Імпорт файлів", desc: "Завантаження Excel з роботами" },
@@ -23,8 +39,8 @@ export default function HomePage() {
                             key={i}
                             href={link.href}
                             className="block p-6 rounded-2xl shadow-md border-2 border-red-600
-                         bg-white text-red-600 hover:bg-red-600 hover:text-white
-                         transition flex flex-col justify-between h-40"
+                             bg-white text-red-600 hover:bg-red-600 hover:text-white
+                             transition flex flex-col justify-between h-40"
                         >
                             <div>
                                 <h2 className="text-2xl font-semibold mb-2">{link.title}</h2>

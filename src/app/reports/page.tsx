@@ -18,24 +18,43 @@ export default function ReportsPage() {
     const [selectedObject, setSelectedObject] = useState<string>("");
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
+    const [token, setToken] = useState<string | null>(null);
+
+    useEffect(() => {
+        // перевірка на браузер
+        if (typeof window !== "undefined") {
+            const storedToken = localStorage.getItem("token");
+            setToken(storedToken);
+        }
+    }, []);
 
     useEffect(() => {
         const fetchObjects = async () => {
+            if (!token) return; // чекати поки токен з'явиться
             try {
                 const res = await axios.get<Work[]>(
-                    "https://agricon-backend-1.onrender.com/works/full-data"
+                    "https://agricon-backend-1.onrender.com/works/full-data",
+                    {
+                        headers: {
+                            Authorization: `Bearer ${token}`,
+                        },
+                    }
                 );
-                const objs = Array.from(new Set(res.data.map((w) => w.object)));
+
+                const objs = Array.from(new Set(res.data.map((w) => w.object))).filter(
+                    Boolean
+                );
                 setObjects(objs);
-            } catch (err) {
+            } catch (err: any) {
                 console.error(err);
+                setMessage(err.response?.data?.message || "Помилка при завантаженні об’єктів");
             }
         };
+
         fetchObjects();
-    }, []);
+    }, [token]);
 
     const sanitizeObjectName = (name: string) => {
-        // Замінюємо всі заборонені символи на "_"
         return name.replace(/[*?:\\/\[\]]/g, "_");
     };
 
@@ -45,31 +64,37 @@ export default function ReportsPage() {
             return;
         }
 
+        if (!token) {
+            setMessage("Неавторизований користувач");
+            return;
+        }
+
         setLoading(true);
         setMessage("");
 
         try {
-            // Відправляємо на бек назву об’єкта у "сирому" вигляді
             const res = await axios.post(
                 "https://agricon-backend-1.onrender.com/works/report",
                 { object: selectedObject },
-                { responseType: "blob" }
+                {
+                    headers: {
+                        Authorization: `Bearer ${token}`,
+                    },
+                    responseType: "blob",
+                }
             );
 
             const url = window.URL.createObjectURL(new Blob([res.data]));
             const link = document.createElement("a");
-            const safeName = sanitizeObjectName(selectedObject); // замінюємо символи для файлу
+            const safeName = sanitizeObjectName(selectedObject);
             link.href = url;
-            link.setAttribute(
-                "download",
-                `${safeName}_report_all.xlsx`
-            );
+            link.setAttribute("download", `${safeName}_report_all.xlsx`);
             document.body.appendChild(link);
             link.click();
             link.remove();
         } catch (err: any) {
             console.error(err);
-            setMessage(err.response?.data?.message || "Помилка при завантаженні");
+            setMessage(err.response?.data?.message || "Помилка при завантаженні звіту");
         } finally {
             setLoading(false);
         }
@@ -81,9 +106,15 @@ export default function ReportsPage() {
                 <div className="max-w-6xl mx-auto flex justify-between items-center">
                     <h1 className="text-2xl font-bold">Адмінка</h1>
                     <div className="space-x-6">
-                        <Link href="/" className="hover:underline">Головна</Link>
-                        <Link href="/objects" className="hover:underline">Об’єкти</Link>
-                        <Link href="/reports" className="hover:underline">Звіти</Link>
+                        <Link href="/" className="hover:underline">
+                            Головна
+                        </Link>
+                        <Link href="/objects" className="hover:underline">
+                            Об’єкти
+                        </Link>
+                        <Link href="/reports" className="hover:underline">
+                            Звіти
+                        </Link>
                     </div>
                 </div>
             </nav>
@@ -92,7 +123,9 @@ export default function ReportsPage() {
                 <h1 className="text-4xl font-bold mb-6 text-red-600">Генерація звітів</h1>
 
                 <div className="mb-6">
-                    <label className="block mb-2 text-red-600 font-semibold">Оберіть об’єкт:</label>
+                    <label className="block mb-2 text-red-600 font-semibold">
+                        Оберіть об’єкт:
+                    </label>
                     <select
                         value={selectedObject}
                         onChange={(e) => setSelectedObject(e.target.value)}
