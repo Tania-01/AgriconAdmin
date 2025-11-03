@@ -37,6 +37,7 @@ export default function ObjectsAndWorksPage() {
     const [newWork, setNewWork] = useState({ category: "", name: "", unit: "", volume: "", done: "" });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [showAddForm, setShowAddForm] = useState(false);
 
     const getToken = () => {
         if (typeof window === 'undefined') return null;
@@ -112,6 +113,7 @@ export default function ObjectsAndWorksPage() {
             );
             alert("Роботу успішно додано!");
             setNewWork({ category: "", name: "", unit: "", volume: "", done: "" });
+            setShowAddForm(false);
             const res = await axios.get('https://agricon-backend-1.onrender.com/works/full-data', { headers });
             setWorks(res.data);
         } catch (err) {
@@ -221,6 +223,54 @@ export default function ObjectsAndWorksPage() {
                             ))}
                             </tbody>
                         </table>
+
+                        {/* Кнопка для відкриття форми */}
+                        <button
+                            onClick={() => setShowAddForm(prev => !prev)}
+                            className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+                        >
+                            {showAddForm ? "Скасувати" : "Додати нову роботу"}
+                        </button>
+
+                        {/* Форма додавання нової роботи */}
+                        {showAddForm && (
+                            <div className="mt-4 p-4 border border-red-200 rounded bg-red-50 max-w-lg">
+                                <input
+                                    type="text"
+                                    placeholder="Категорія"
+                                    value={newWork.category}
+                                    onChange={e => setNewWork(prev => ({ ...prev, category: e.target.value }))}
+                                    className="w-full mb-2 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-red-400"
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Назва роботи"
+                                    value={newWork.name}
+                                    onChange={e => setNewWork(prev => ({ ...prev, name: e.target.value }))}
+                                    className="w-full mb-2 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-red-400"
+                                />
+                                <input
+                                    type="text"
+                                    placeholder="Одиниця"
+                                    value={newWork.unit}
+                                    onChange={e => setNewWork(prev => ({ ...prev, unit: e.target.value }))}
+                                    className="w-full mb-2 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-red-400"
+                                />
+                                <input
+                                    type="number"
+                                    placeholder="Обсяг"
+                                    value={newWork.volume}
+                                    onChange={e => setNewWork(prev => ({ ...prev, volume: e.target.value }))}
+                                    className="w-full mb-2 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-red-400"
+                                />
+                                <button
+                                    onClick={handleAddNewWork}
+                                    className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+                                >
+                                    Додати
+                                </button>
+                            </div>
+                        )}
                     </div>
                 )}
             </div>
