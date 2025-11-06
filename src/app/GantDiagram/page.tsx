@@ -25,7 +25,7 @@ export default function GanttChart() {
     const [works, setWorks] = useState<IWork[]>([]);
 
     useEffect(() => {
-        axios.get('https://agricon-backend-1.onrender.com/works/full-data')
+        axios.get('https://agricon-backend-1.onrender.com/works/full-datas')
             .then(res => {
                 const formatted: IWork[] = res.data.map((item: any) => ({
                     _id: item._id,
