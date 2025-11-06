@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import axios from 'axios';
-import FrappeGanttWrapper from './gantWraper'; // імпорт обгортки
+import FrappeGanttWrapper from './gantWraper';
 
 interface IWork {
     _id: string;
@@ -13,30 +13,44 @@ interface IWork {
     end?: string;
 }
 
-interface Task {
-    id: string;
-    name: string;
-    start: string;
-    end: string;
-    progress?: number;
-}
-
-export default function GanttChart() {
+export default function GanttAdmin() {
     const [works, setWorks] = useState<IWork[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        axios.get('https://agricon-backend-1.onrender.com/works/full-datas')
-            .then(res => {
-                const formatted: IWork[] = res.data.map((item: any) => ({
+        const fetchWorks = async () => {
+            try {
+                const token = localStorage.getItem("token_admin");
+                if (!token) {
+                    console.log("❌ Токена немає");
+                    return;
+                }
+
+                const res = await axios.get(
+                    "https://agricon-backend-1.onrender.com/works/full-data",
+                    {
+                        headers: { Authorization: `Bearer ${token}` }
+                    }
+                );
+
+                const formatted = res.data.map((item: any) => ({
                     _id: item._id,
                     name: item.name,
                     volume: item.volume,
                     done: item.done,
-                    start: '',
-                    end: '',
+                    start: item.start || "",
+                    end: item.end || "",
                 }));
+
                 setWorks(formatted);
-            });
+            } catch (err) {
+                console.error("❌ Помилка при завантаженні:", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchWorks();
     }, []);
 
     const getProgress = (done: number, volume: number) => {
@@ -46,20 +60,24 @@ export default function GanttChart() {
 
     const getDuration = (start?: string, end?: string) => {
         if (!start || !end) return '';
-        const diffTime = new Date(end).getTime() - new Date(start).getTime();
-        const days = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-        return days > 0 ? `${days} дн.` : '';
+        const diff = new Date(end).getTime() - new Date(start).getTime();
+        const days = Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
+        return days > 0 ? `${days} днів` : '';
     };
 
     const handleDateChange = (id: string, field: 'start' | 'end', value: string) => {
-        setWorks(prev => prev.map(w => w._id === id ? { ...w, [field]: value } : w));
+        setWorks(prev =>
+            prev.map(w => (w._id === id ? { ...w, [field]: value } : w))
+        );
     };
+
+    if (loading) return <p className="p-6">Завантаження...</p>;
 
     return (
         <div className="p-6">
             <h2 className="text-xl font-semibold mb-4">Діаграма виконання робіт</h2>
 
-            {/* Таблиця */}
+            {/* ТАБЛИЦЯ */}
             <table className="w-full border text-sm mb-8">
                 <thead className="bg-gray-100">
                 <tr>
@@ -72,46 +90,59 @@ export default function GanttChart() {
                     <th className="border p-2">Прогрес (%)</th>
                 </tr>
                 </thead>
+
                 <tbody>
-                {works.map(work => (
-                    <tr key={work._id}>
-                        <td className="border p-2">{work.name}</td>
-                        <td className="border p-2 text-center">{work.volume}</td>
-                        <td className="border p-2 text-center">{work.done}</td>
+                {works.map(w => (
+                    <tr key={w._id}>
+                        <td className="border p-2">{w.name}</td>
+                        <td className="border p-2 text-center">{w.volume}</td>
+                        <td className="border p-2 text-center">{w.done}</td>
+
+                        {/* START DATE */}
                         <td className="border p-2">
                             <input
                                 type="date"
-                                value={work.start || ''}
-                                onChange={e => handleDateChange(work._id, 'start', e.target.value)}
+                                value={w.start || ""}
+                                onChange={e => handleDateChange(w._id, "start", e.target.value)}
                                 className="border px-2 py-1 w-full"
                             />
                         </td>
+
+                        {/* END DATE */}
                         <td className="border p-2">
                             <input
                                 type="date"
-                                value={work.end || ''}
-                                onChange={e => handleDateChange(work._id, 'end', e.target.value)}
+                                value={w.end || ""}
+                                onChange={e => handleDateChange(w._id, "end", e.target.value)}
                                 className="border px-2 py-1 w-full"
                             />
                         </td>
-                        <td className="border p-2 text-center">{getDuration(work.start, work.end)}</td>
-                        <td className="border p-2 text-center">{getProgress(work.done, work.volume)}%</td>
+
+                        <td className="border p-2 text-center">
+                            {getDuration(w.start, w.end)}
+                        </td>
+
+                        <td className="border p-2 text-center">
+                            {getProgress(w.done, w.volume)}%
+                        </td>
                     </tr>
                 ))}
                 </tbody>
             </table>
 
-            {/* FrappeGantt */}
+            {/* GANTT */}
             {works.some(w => w.start && w.end) && (
                 <div className="border rounded-lg p-4 shadow-md bg-white">
                     <FrappeGanttWrapper
-                        tasks={works.filter(w => w.start && w.end).map(w => ({
-                            id: w._id,
-                            name: w.name,
-                            start: w.start!,
-                            end: w.end!,
-                            progress: getProgress(w.done, w.volume),
-                        }))}
+                        tasks={works
+                            .filter(w => w.start && w.end)
+                            .map(w => ({
+                                id: w._id,
+                                name: w.name,
+                                start: w.start!,
+                                end: w.end!,
+                                progress: getProgress(w.done, w.volume),
+                            }))}
                         viewMode="Day"
                     />
                 </div>
