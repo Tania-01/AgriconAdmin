@@ -9,28 +9,25 @@ interface IWork {
     name: string;
     volume: number;
     done: number;
-    start?: string;
-    end?: string;
+    start: string;
+    end: string;
 }
 
 export default function GanttAdmin() {
     const [works, setWorks] = useState<IWork[]>([]);
     const [loading, setLoading] = useState(true);
 
+    const token =
+        typeof window !== 'undefined' ? localStorage.getItem("token") : null;
+
+    const headers = { Authorization: `Bearer ${token}` };
+
     useEffect(() => {
         const fetchWorks = async () => {
             try {
-                const token = localStorage.getItem("token_admin");
-                if (!token) {
-                    console.log("❌ Токена немає");
-                    return;
-                }
-
                 const res = await axios.get(
                     "https://agricon-backend-1.onrender.com/works/full-data",
-                    {
-                        headers: { Authorization: `Bearer ${token}` }
-                    }
+                    { headers }
                 );
 
                 const formatted = res.data.map((item: any) => ({
@@ -44,7 +41,7 @@ export default function GanttAdmin() {
 
                 setWorks(formatted);
             } catch (err) {
-                console.error("❌ Помилка при завантаженні:", err);
+                console.log("❌ Помилка:", err);
             } finally {
                 setLoading(false);
             }
@@ -59,25 +56,42 @@ export default function GanttAdmin() {
     };
 
     const getDuration = (start?: string, end?: string) => {
-        if (!start || !end) return '';
+        if (!start || !end) return "";
         const diff = new Date(end).getTime() - new Date(start).getTime();
         const days = Math.ceil(diff / (1000 * 60 * 60 * 24)) + 1;
-        return days > 0 ? `${days} днів` : '';
+        return days > 0 ? `${days} днів` : "";
     };
 
-    const handleDateChange = (id: string, field: 'start' | 'end', value: string) => {
-        setWorks(prev =>
-            prev.map(w => (w._id === id ? { ...w, [field]: value } : w))
+    const handleDateChange = async (id: string, field: 'start' | 'end', value: string) => {
+        const updated = works.map(w =>
+            w._id === id ? { ...w, [field]: value } : w
         );
+        setWorks(updated);
+
+        try {
+            await axios.put(
+                "https://agricon-backend-1.onrender.com/works/update-dates",
+                {
+                    workId: id,
+                    start: updated.find(w => w._id === id)?.start,
+                    end: updated.find(w => w._id === id)?.end,
+                },
+                { headers }
+            );
+        } catch (err) {
+            console.error("❌ Помилка оновлення дат:", err);
+        }
     };
 
     if (loading) return <p className="p-6">Завантаження...</p>;
 
     return (
         <div className="p-6">
-            <h2 className="text-xl font-semibold mb-4">Діаграма виконання робіт</h2>
+            <h2 className="text-xl font-semibold mb-4">
+                Діаграма виконання робіт
+            </h2>
 
-            {/* ТАБЛИЦЯ */}
+            {/* -------- 💠 ТАБЛИЦЯ -------- */}
             <table className="w-full border text-sm mb-8">
                 <thead className="bg-gray-100">
                 <tr>
@@ -92,61 +106,63 @@ export default function GanttAdmin() {
                 </thead>
 
                 <tbody>
-                {works.map(w => (
-                    <tr key={w._id}>
-                        <td className="border p-2">{w.name}</td>
-                        <td className="border p-2 text-center">{w.volume}</td>
-                        <td className="border p-2 text-center">{w.done}</td>
+                {works.map(work => (
+                    <tr key={work._id}>
+                        <td className="border p-2">{work.name}</td>
+                        <td className="border p-2 text-center">{work.volume}</td>
+                        <td className="border p-2 text-center">{work.done}</td>
 
-                        {/* START DATE */}
+                        {/* DATE START */}
                         <td className="border p-2">
                             <input
                                 type="date"
-                                value={w.start || ""}
-                                onChange={e => handleDateChange(w._id, "start", e.target.value)}
+                                value={work.start || ""}
+                                onChange={e =>
+                                    handleDateChange(work._id, "start", e.target.value)
+                                }
                                 className="border px-2 py-1 w-full"
                             />
                         </td>
 
-                        {/* END DATE */}
+                        {/* DATE END */}
                         <td className="border p-2">
                             <input
                                 type="date"
-                                value={w.end || ""}
-                                onChange={e => handleDateChange(w._id, "end", e.target.value)}
+                                value={work.end || ""}
+                                onChange={e =>
+                                    handleDateChange(work._id, "end", e.target.value)
+                                }
                                 className="border px-2 py-1 w-full"
                             />
                         </td>
 
                         <td className="border p-2 text-center">
-                            {getDuration(w.start, w.end)}
+                            {getDuration(work.start, work.end)}
                         </td>
 
                         <td className="border p-2 text-center">
-                            {getProgress(w.done, w.volume)}%
+                            {getProgress(work.done, work.volume)}%
                         </td>
                     </tr>
                 ))}
                 </tbody>
             </table>
 
-            {/* GANTT */}
-            {works.some(w => w.start && w.end) && (
-                <div className="border rounded-lg p-4 shadow-md bg-white">
-                    <FrappeGanttWrapper
-                        tasks={works
-                            .filter(w => w.start && w.end)
-                            .map(w => ({
-                                id: w._id,
-                                name: w.name,
-                                start: w.start!,
-                                end: w.end!,
-                                progress: getProgress(w.done, w.volume),
-                            }))}
-                        viewMode="Day"
-                    />
-                </div>
-            )}
+            {/* -------- 💠 GANTT CHART -------- */}
+            <div className="border rounded-lg p-4 shadow-md bg-white">
+                <FrappeGanttWrapper
+                    tasks={works
+                        .filter(w => w.start && w.end)
+                        .map(w => ({
+                            id: w._id,
+                            name: w.name,
+                            start: w.start,
+                            end: w.end,
+                            progress: getProgress(w.done, w.volume),
+                        }))}
+                    viewMode="Day"
+                />
+            </div>
         </div>
     );
 }
