@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { FaSpinner } from 'react-icons/fa';
-import Navbar from '../navbar/Navbar';
 
 export default function ImportPage() {
     const [file, setFile] = useState<File | null>(null);
@@ -84,7 +83,6 @@ export default function ImportPage() {
 
     return (
         <div className="min-h-screen bg-white">
-            <Navbar />
 
             <div className="p-6 max-w-lg mx-auto bg-white text-black rounded-xl shadow-lg border border-red-300 mt-10">
                 <h1 className="text-3xl font-bold text-center text-red-600 mb-6">
