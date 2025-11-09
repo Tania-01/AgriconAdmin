@@ -5,10 +5,10 @@ import { useRouter } from "next/navigation";
 
 export default function AdminLoginPage() {
     const router = useRouter();
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState("");
+    const [email, setEmail] = useState<string>("");
+    const [password, setPassword] = useState<string>("");
+    const [loading, setLoading] = useState<boolean>(false);
+    const [error, setError] = useState<string>("");
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -19,7 +19,7 @@ export default function AdminLoginPage() {
         }
     }, [router]);
 
-    const handleLogin = async (e) => {
+    const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setLoading(true);
         setError("");
@@ -42,7 +42,7 @@ export default function AdminLoginPage() {
             localStorage.setItem("tokenExpiry", String(Date.now() + 60 * 60 * 1000));
 
             router.push("/");
-        } catch (err) {
+        } catch (err: any) {
             setError(err.response?.data?.message || "Помилка входу");
         } finally {
             setLoading(false);
@@ -74,7 +74,7 @@ export default function AdminLoginPage() {
                         <label className="block mb-1 font-medium">Email</label>
                         <input
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setEmail(e.target.value)}
                             className="w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#e30613]"
                             required
                         />
@@ -85,7 +85,7 @@ export default function AdminLoginPage() {
                         <input
                             type="password"
                             value={password}
-                            onChange={(e) => setPassword(e.target.value)}
+                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPassword(e.target.value)}
                             className="w-full px-4 py-3 border rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-[#e30613]"
                             required
                         />
