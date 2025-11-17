@@ -163,8 +163,77 @@ export default function ObjectsAndWorksPage() {
 
                 {selectedObject && (
                     <div className="border-t border-gray-300 pt-6">
-                        <h2 className="text-xl font-semibold mb-3 text-red-600">Проект: {selectedObject}</h2>
 
+                        {/* Редагування міста і назви об’єкта */}
+                        <div className="mb-4 flex flex-col gap-2">
+                            <div className="flex items-center gap-2">
+                                <span className="font-semibold">Місто:</span>
+                                <input
+                                    type="text"
+                                    value={selectedCity || ""}
+                                    onChange={e => setSelectedCity(e.target.value)}
+                                    className="border px-2 py-1 rounded w-64"
+                                />
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            await Promise.all(
+                                                filteredWorks.map(work =>
+                                                    axios.put(
+                                                        `https://agricon-backend-1.onrender.com/works/update-city/${work._id}`,
+                                                        { city: selectedCity },
+                                                        { headers }
+                                                    )
+                                                )
+                                            );
+                                            alert("Місто успішно оновлено!");
+                                            const res = await axios.get('https://agricon-backend-1.onrender.com/works/full-data', { headers });
+                                            setWorks(res.data);
+                                        } catch (err) {
+                                            console.error("Помилка оновлення міста:", err);
+                                        }
+                                    }}
+                                    className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition"
+                                >
+                                    Зберегти
+                                </button>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                                <span className="font-semibold">Об’єкт:</span>
+                                <input
+                                    type="text"
+                                    value={selectedObject}
+                                    onChange={e => setSelectedObject(e.target.value)}
+                                    className="border px-2 py-1 rounded w-64"
+                                />
+                                <button
+                                    onClick={async () => {
+                                        try {
+                                            await Promise.all(
+                                                filteredWorks.map(work =>
+                                                    axios.put(
+                                                        `https://agricon-backend-1.onrender.com/works/update-object/${work._id}`,
+                                                        { object: selectedObject },
+                                                        { headers }
+                                                    )
+                                                )
+                                            );
+                                            alert("Назву об’єкта успішно оновлено!");
+                                            const res = await axios.get('https://agricon-backend-1.onrender.com/works/full-data', { headers });
+                                            setWorks(res.data);
+                                        } catch (err) {
+                                            console.error("Помилка оновлення об’єкта:", err);
+                                        }
+                                    }}
+                                    className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition"
+                                >
+                                    Зберегти
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Відповідальні */}
                         <div className="mb-4 bg-red-50 p-3 rounded-md border border-red-200">
                             <div className="mb-2">
                                 <span className="font-semibold">Поточні відповідальні:</span>
@@ -184,6 +253,7 @@ export default function ObjectsAndWorksPage() {
                             </div>
                         </div>
 
+                        {/* Таблиця робіт */}
                         <table className="w-full border border-red-300 shadow-sm">
                             <thead className="bg-red-600 text-white">
                             <tr>
@@ -193,38 +263,51 @@ export default function ObjectsAndWorksPage() {
                                 <th className="border px-2 py-1">Одиниця</th>
                                 <th className="border px-2 py-1">Обсяг</th>
                                 <th className="border px-2 py-1">Виконано</th>
+                                <th className="border px-2 py-1">Залишок</th>
                             </tr>
                             </thead>
                             <tbody>
-                            {filteredWorks.map((work, i) => (
-                                <tr key={work._id || i} className={i % 2 === 0 ? 'bg-white' : 'bg-red-50'}>
-                                    <td className="border px-2 py-1">{work.category}</td>
-                                    <td className="border px-2 py-1">{work.name}</td>
-                                    <td className="border px-2 py-1">
-                                        <input type="text" value={work.appName || ""}
-                                               onChange={e => {
-                                                   const value = e.target.value;
-                                                   setWorks(prev => prev.map(w => w._id === work._id ? { ...w, appName: value } : w));
-                                               }}
-                                               onBlur={async () => {
-                                                   try {
-                                                       await axios.put(`https://agricon-backend-1.onrender.com/works/${work._id}/app-name`, { appName: work.appName || "" }, { headers });
-                                                   } catch (err) {
-                                                       console.error("Помилка оновлення назви для додатку:", err);
-                                                   }
-                                               }}
-                                               className="border px-1 py-0.5 rounded w-full"
-                                        />
-                                    </td>
-                                    <td className="border px-2 py-1">{work.unit}</td>
-                                    <td className="border px-2 py-1">{typeof work.volume === "number" ? work.volume.toFixed(2) : work.volume}</td>
-                                    <td className="border px-2 py-1">{typeof work.done === "number" ? work.done.toFixed(2) : work.done}</td>
-                                </tr>
-                            ))}
+                            {filteredWorks.map((work, i) => {
+                                const remaining = typeof work.volume === "number" && typeof work.done === "number"
+                                    ? work.volume - work.done
+                                    : 0;
+                                return (
+                                    <tr key={work._id || i} className={i % 2 === 0 ? 'bg-white' : 'bg-red-50'}>
+                                        <td className="border px-2 py-1">{work.category}</td>
+                                        <td className="border px-2 py-1">{work.name}</td>
+                                        <td className="border px-2 py-1">
+                                            <input
+                                                type="text"
+                                                value={work.appName || ""}
+                                                onChange={e => {
+                                                    const value = e.target.value;
+                                                    setWorks(prev => prev.map(w => w._id === work._id ? { ...w, appName: value } : w));
+                                                }}
+                                                onBlur={async () => {
+                                                    try {
+                                                        await axios.put(
+                                                            `https://agricon-backend-1.onrender.com/works/${work._id}/app-name`,
+                                                            { appName: work.appName || "" },
+                                                            { headers }
+                                                        );
+                                                    } catch (err) {
+                                                        console.error("Помилка оновлення назви для додатку:", err);
+                                                    }
+                                                }}
+                                                className="border px-1 py-0.5 rounded w-full"
+                                            />
+                                        </td>
+                                        <td className="border px-2 py-1">{work.unit}</td>
+                                        <td className="border px-2 py-1">{Number(work.volume).toFixed(2)}</td>
+                                        <td className="border px-2 py-1">{Number(work.done).toFixed(2)}</td>
+                                        <td className="border px-2 py-1">{Number(remaining).toFixed(2)}</td>
+                                    </tr>
+                                );
+                            })}
                             </tbody>
                         </table>
 
-                        {/* Кнопка для відкриття форми */}
+                        {/* Кнопка для відкриття форми додавання роботи */}
                         <button
                             onClick={() => setShowAddForm(prev => !prev)}
                             className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
@@ -232,7 +315,6 @@ export default function ObjectsAndWorksPage() {
                             {showAddForm ? "Скасувати" : "Додати нову роботу"}
                         </button>
 
-                        {/* Форма додавання нової роботи */}
                         {showAddForm && (
                             <div className="mt-4 p-4 border border-red-200 rounded bg-red-50 max-w-lg">
                                 <input

@@ -11,13 +11,7 @@ interface Work {
     unit: string;
     volume: number;
     done: number;
-    history?: { date: string, addedBy: { _id: string, name: string } }[];
-}
-
-interface User {
-    _id: string;
-    name: string;
-    email: string;
+    history?: { date: string }[];
 }
 
 export default function ReportsPage() {
@@ -25,23 +19,22 @@ export default function ReportsPage() {
     const [token, setToken] = useState<string | null>(null);
     const [objects, setObjects] = useState<string[]>([]);
     const [selectedObject, setSelectedObject] = useState("");
-    const [responsibles, setResponsibles] = useState<User[]>([]);
-    const [selectedUser, setSelectedUser] = useState<string>("");
     const [months, setMonths] = useState<string[]>([]);
     const [selectedMonth, setSelectedMonth] = useState("");
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
 
+    // Отримуємо токен
     useEffect(() => {
         const storedToken = localStorage.getItem("token");
         if (!storedToken) router.push("/");
         else setToken(storedToken);
     }, [router]);
 
-    // Завантажуємо об’єкти та формуємо список місяців
+    // Завантаження об’єктів та формування місяців
     useEffect(() => {
         if (!token) return;
-        const fetchData = async () => {
+        const fetchObjects = async () => {
             try {
                 const res = await axios.get<Work[]>(
                     "https://agricon-backend-1.onrender.com/works/full-data",
@@ -51,6 +44,7 @@ export default function ReportsPage() {
                 const objs = Array.from(new Set(res.data.map(w => w.object))).filter(Boolean);
                 setObjects(objs);
 
+                // Збираємо всі місяці з історії
                 const allMonthsSet = new Set<string>();
                 res.data.forEach(w => {
                     w.history?.forEach(h => {
@@ -67,30 +61,8 @@ export default function ReportsPage() {
                 setMessage(err.response?.data?.message || "Помилка при завантаженні об’єктів");
             }
         };
-        fetchData();
+        fetchObjects();
     }, [token]);
-
-    useEffect(() => {
-        if (!token || !selectedObject) {
-            setResponsibles([]);
-            setSelectedUser("");
-            return;
-        }
-        const fetchResponsibles = async () => {
-            try {
-                const res = await axios.get<{ responsibles: User[] }>(
-                    `https://agricon-backend-1.onrender.com/works/responsibles?object=${encodeURIComponent(selectedObject)}`,
-                    { headers: { Authorization: `Bearer ${token}` } }
-                );
-                setResponsibles(res.data.responsibles || []);
-            } catch (err: any) {
-                console.error("Помилка завантаження відповідальних:", err);
-                setMessage(err.response?.data?.message || "Помилка завантаження відповідальних");
-                setResponsibles([]);
-            }
-        };
-        fetchResponsibles();
-    }, [token, selectedObject]);
 
     const sanitizeFileName = (name: string) =>
         encodeURIComponent(name.replace(/[^a-zA-Z0-9_-]/g, "_"));
@@ -102,12 +74,14 @@ export default function ReportsPage() {
         setMessage("");
 
         try {
+            const monthParam =
+                selectedMonth === "current" ? "current" : (selectedMonth || null);
+
             const res = await axios.post(
                 "https://agricon-backend-1.onrender.com/works/report",
                 {
                     object: selectedObject,
-                    userId: selectedUser || null,
-                    month: selectedMonth || null,
+                    month: monthParam,
                     format: "excel"
                 },
                 {
@@ -133,13 +107,8 @@ export default function ReportsPage() {
     };
 
     return (
-        <div
-
-            className="min-h-screen bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: "url('/3.jpg')" }} // тут твоя картинка
-        >
-            <Navbar/>
-           
+        <div className="min-h-screen bg-cover bg-center bg-no-repeat" style={{ backgroundImage: "url('/3.jpg')" }}>
+            <Navbar />
 
             <div className="max-w-4xl mx-auto mt-16 p-6">
                 <div className="bg-white/80 backdrop-blur-md shadow-2xl rounded-3xl p-8">
@@ -158,36 +127,26 @@ export default function ReportsPage() {
                         </select>
                     </div>
 
-                    {/* Відповідальний */}
-                    <div className="mb-6">
-                        <label className="block mb-2 font-semibold text-gray-700">Відповідальний</label>
-                        <select
-                            value={selectedUser}
-                            onChange={(e) => setSelectedUser(e.target.value)}
-                            className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-red-400 focus:outline-none transition"
-                        >
-                            <option value="">-- Всі --</option>
-                            {responsibles.map(u => <option key={u._id} value={u._id}>{u.name}</option>)}
-                        </select>
-                    </div>
-
-                    {/* Місяць */}
+                    {/* Період */}
                     <div className="mb-8">
-                        <label className="block mb-2 font-semibold text-gray-700">Місяць</label>
+                        <label className="block mb-2 font-semibold text-gray-700">Період</label>
                         <select
                             value={selectedMonth}
                             onChange={e => setSelectedMonth(e.target.value)}
                             className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-red-400 focus:outline-none transition"
                         >
-                            <option value="">-- Всі місяці --</option>
-                            {months.map(m => <option key={m} value={m}>{m}</option>)}
+                            <option value="">-- Весь час --</option>
+                            <option value="current">Поточний місяць</option>
+                            {months.map(m => (
+                                <option key={m} value={m}>{m}</option>
+                            ))}
                         </select>
                     </div>
 
                     {/* Кнопка */}
                     <button
                         onClick={handleDownload}
-                        disabled={loading}
+                        disabled={loading || !selectedObject}
                         className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-2xl shadow-lg transition transform hover:scale-105"
                     >
                         {loading ? "Завантаження..." : "Завантажити звіт"}
