@@ -231,9 +231,9 @@ export default function ObjectsAndWorksPage() {
                                     Зберегти
                                 </button>
                             </div>
+                            
                         </div>
 
-                        {/* Відповідальні */}
                         <div className="mb-4 bg-red-50 p-3 rounded-md border border-red-200">
                             <div className="mb-2">
                                 <span className="font-semibold">Поточні відповідальні:</span>

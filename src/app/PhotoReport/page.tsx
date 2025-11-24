@@ -1,74 +1,58 @@
 'use client';
 
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
+import { useRouter } from "next/navigation";
 import Navbar from "../navbar/Navbar";
 
-interface Photo {
+interface PhotoReport {
     _id: string;
-    imageUrl: string;
     note?: string;
-    object?: string;
-    createdAt?: string;
+    signedUrl: string;
+    createdBy?: { name?: string; email?: string } | null;
 }
 
-interface ObjectItem {
-    _id: string;
-    name: string;
+interface Work {
+    object: string;
 }
 
-export default function PhotoReportPage() {
-    const [photos, setPhotos] = useState<Photo[]>([]);
-    const [objects, setObjects] = useState<ObjectItem[]>([]);
-    const [selectedObject, setSelectedObject] = useState<string>("");
+export default function PhotoReportsPage() {
+    const router = useRouter();
+    const [token, setToken] = useState<string | null>(null);
+    const [objects, setObjects] = useState<string[]>([]);
+    const [selectedObject, setSelectedObject] = useState("");
+    const [photos, setPhotos] = useState<PhotoReport[]>([]);
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState("");
 
-    const API = "https://agricon-backend-1.onrender.com/works";
+    // Отримуємо токен
+    useEffect(() => {
+        const storedToken = localStorage.getItem("token");
+        if (!storedToken) router.push("/LoginPage");
+        else setToken(storedToken);
+    }, [router]);
 
-    // ============================
-    //  AUTH HEADERS
-    // ============================
-    const getAuthHeaders = () => {
-        try {
-            const token = localStorage.getItem("token");
-            return token ? { Authorization: `Bearer ${token}` } : {};
-        } catch {
-            return {};
-        }
-    };
+    // Завантажуємо об’єкти
+    useEffect(() => {
+        if (!token) return;
+        const fetchObjects = async () => {
+            try {
+                const res = await axios.get<Work[]>(
+                    "https://agricon-backend-1.onrender.com/works/full-data",
+                    { headers: { Authorization: `Bearer ${token}` } }
+                );
+                const objs = Array.from(new Set(res.data.map(w => w.object))).filter(Boolean);
+                setObjects(objs);
+            } catch (err: any) {
+                console.error(err);
+                setMessage(err.response?.data?.message || "Помилка при завантаженні об’єктів");
+            }
+        };
+        fetchObjects();
+    }, [token]);
 
-    // ============================
-    //  FETCH OBJECTS
-    // ============================
-    const fetchObjects = async () => {
-        try {
-            const res = await axios.get(`${API}/full-datas`, {
-                headers: getAuthHeaders()
-            });
-
-            const objectNames = res.data
-                .map((w: any) => w.object)
-                .filter(Boolean);
-
-            const uniqueObjects: ObjectItem[] = Array.from(new Set(objectNames)).map(
-                (obj) => ({
-                    _id: String(obj),
-                    name: String(obj),
-                })
-            );
-
-            setObjects(uniqueObjects);
-        } catch (err) {
-            console.error("Помилка при отриманні об’єктів:", err);
-            setMessage("Помилка при отриманні об’єктів");
-        }
-    };
-
-    // ============================
-    //  FETCH PHOTOS BY OBJECT
-    // ============================
-    const fetchPhotos = async (objectName: string) => {
+    const handleObjectChange = async (objectName: string) => {
+        setSelectedObject(objectName);
         if (!objectName) {
             setPhotos([]);
             return;
@@ -76,114 +60,60 @@ export default function PhotoReportPage() {
 
         setLoading(true);
         setMessage("");
-
         try {
-            const res = await axios.get(
-                `${API}/photo/${encodeURIComponent(objectName)}`,
-                { headers: getAuthHeaders() }
+            const res = await axios.get<PhotoReport[]>(
+                `https://agricon-backend-1.onrender.com/works/files/${encodeURIComponent(objectName)}`,
+                { headers: { Authorization: `Bearer ${token}` } }
             );
-
-            const list = res.data?.data ?? res.data ?? [];
-            setPhotos(Array.isArray(list) ? list : []);
-        } catch (err) {
-            console.error("Помилка при отриманні фото:", err);
-            setMessage("Помилка при отриманні фото");
+            setPhotos(res.data);
+        } catch (err: any) {
+            console.error(err);
+            setMessage(err.response?.data?.message || "Помилка при завантаженні фото");
             setPhotos([]);
         } finally {
             setLoading(false);
         }
     };
 
-    useEffect(() => {
-        fetchObjects();
-    }, []);
-
-    useEffect(() => {
-        fetchPhotos(selectedObject);
-    }, [selectedObject]);
-
-    // ============================
-    //  RENDER
-    // ============================
     return (
-        <div
-            className="min-h-screen bg-cover bg-center bg-no-repeat"
-            style={{ backgroundImage: "url('/3.jpg')" }}
-        >
+        <div className="min-h-screen bg-gray-100">
             <Navbar />
+            <div className="max-w-5xl mx-auto mt-12 p-6 bg-white rounded-3xl shadow-lg">
+                <h1 className="text-3xl font-bold mb-6 text-center text-red-700">
+                    Фото-звіти по об’єктах
+                </h1>
 
-            <div className="max-w-5xl mx-auto mt-16 p-6">
-                <div className="bg-white/80 backdrop-blur-md shadow-2xl rounded-3xl p-8">
+                <div className="mb-6">
+                    <label className="block mb-2 font-semibold">Об’єкт</label>
+                    <select
+                        value={selectedObject}
+                        onChange={(e) => handleObjectChange(e.target.value)}
+                        className="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-red-400"
+                    >
+                        <option value="">-- Оберіть об’єкт --</option>
+                        {objects.map(obj => <option key={obj} value={obj}>{obj}</option>)}
+                    </select>
+                </div>
 
-                    <h1 className="text-4xl font-extrabold mb-8 text-red-600 text-center">
-                        Фото-звіти
-                    </h1>
+                {loading && <p className="text-center text-gray-500">Завантаження...</p>}
+                {message && <p className="text-center text-red-600">{message}</p>}
 
-                    {/* ВИБІР ОБ’ЄКТА */}
-                    <div className="mb-6">
-                        <label className="block mb-2 font-semibold text-gray-700">
-                            Об’єкт
-                        </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-6">
+                    {photos.map(photo => (
+                        <div key={photo._id} className="border rounded-lg p-2 shadow-sm bg-gray-50">
+                            <a
+                                href={photo.signedUrl}
+                                className="w-full h-48 object-cover rounded-md mb-2"
+                            ><img src={photo.signedUrl}
+                                  className="w-full h-48 object-cover rounded-md mb-2"
+                            /></a>
 
-                        <select
-                            value={selectedObject}
-                            onChange={(e) => setSelectedObject(e.target.value)}
-                            className="w-full p-3 rounded-lg border border-gray-300
-                                       focus:ring-2 focus:ring-red-400 focus:outline-none transition"
-                        >
-                            <option value="">-- Оберіть --</option>
-
-                            {objects.map((obj) => (
-                                <option key={obj._id} value={obj.name}>
-                                    {obj.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* СТАТУСИ / ПОВІДОМЛЕННЯ */}
-                    {loading && <p className="text-center mb-4">Завантаження...</p>}
-
-                    {!loading && message && (
-                        <p className="text-center text-red-600 mb-4">{message}</p>
-                    )}
-
-                    {!loading && !selectedObject && (
-                        <p className="text-center mb-4">Будь ласка, оберіть об’єкт</p>
-                    )}
-
-                    {!loading && selectedObject && photos.length === 0 && (
-                        <p className="text-center mb-4">Немає фото для цього об’єкта</p>
-                    )}
-
-                    {/* ГАЛЕРЕЯ */}
-                    {!loading && photos.length > 0 && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-                            {photos.map((p) => (
-                                <div
-                                    key={p._id}
-                                    className="border border-gray-300 rounded-2xl p-2
-                                               bg-white/70 shadow-md"
-                                >
-                                    <img
-                                        src={p.imageUrl}
-                                        alt={p.note || "Фото"}
-                                        className="w-full h-48 object-cover rounded-xl mb-2"
-                                    />
-
-                                    {p.note && (
-                                        <p className="text-gray-700 text-sm mb-1">{p.note}</p>
-                                    )}
-
-                                    {p.object && (
-                                        <p className="text-gray-600 text-xs">
-                                            <b>Об’єкт:</b> {p.object}
-                                        </p>
-                                    )}
-                                </div>
-                            ))}
+                            {photo.note && <p className="text-sm text-gray-700">{photo.note}</p>}
+                            <p className="text-xs text-gray-500">
+                                Завантажив: {photo.createdBy?.name || "Невідомо"} ({photo.createdBy?.email || "—"})
+                            </p>
                         </div>
-                    )}
+                    ))}
                 </div>
             </div>
         </div>

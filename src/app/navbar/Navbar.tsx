@@ -11,7 +11,8 @@ const Navbar = () => {
         { href: "/", title: "Головна" },
         { href: "/import", title: "Імпорт" },
         { href: "/reports", title: "Звіти" },
-        { href: "/GantDiagram", title: "Діаграма" }
+        { href: "/PhotoReport", title: "Фотозвіт" },
+        { href: "/Project", title: "Проекти" }
     ];
 
     const handleLogout = () => {
