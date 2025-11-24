@@ -23,7 +23,6 @@ export default function HomePage() {
         { href: "/objects", title: "Об’єкти", desc: "Перегляд усіх об’єктів та робіт" },
         { href: "/import", title: "Імпорт файлів", desc: "Завантаження Excel з роботами" },
         { href: "/reports", title: "Звіти", desc: "Генерація Excel / PDF" },
-        { href: "/users", title: "Користувачі", desc: "Управління адмiнами та менеджерами" },
         { href: "/settings", title: "Налаштування", desc: "Конфігурації системи" },
         { href: "/PhotoReport", title: "Фото-звіти", desc: "Перегляд фото по об’єктах" },
         { href: "/Project", title: "Додати проект", desc: "Створення нового проекту" }, // <-- нова кнопка
