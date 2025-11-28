@@ -38,6 +38,9 @@ export default function ObjectsAndWorksPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showAddForm, setShowAddForm] = useState(false);
+    const [monthClosed, setMonthClosed] = useState<boolean>(false);
+
+    const currentMonth = new Date().toISOString().slice(0, 7);
 
     const getToken = () => {
         if (typeof window === 'undefined') return null;
@@ -69,6 +72,28 @@ export default function ObjectsAndWorksPage() {
 
         fetchData();
     }, []);
+
+    useEffect(() => {
+        if (!selectedObject) return;
+
+        const fetchMonthStatus = async () => {
+            try {
+                const res = await axios.get(
+                    'https://agricon-backend-1.onrender.com/works/month-status',
+                    {
+                        params: { object: selectedObject, month: currentMonth },
+                        headers
+                    }
+                );
+                setMonthClosed(res.data.closed);
+            } catch (err) {
+                console.error("Помилка отримання статусу місяця:", err);
+                setMonthClosed(false);
+            }
+        };
+
+        fetchMonthStatus();
+    }, [selectedObject, currentMonth]);
 
     if (loading) return <p className="p-6 text-gray-600">Завантаження...</p>;
     if (error) return <p className="p-6 text-red-600">{error}</p>;
@@ -164,6 +189,16 @@ export default function ObjectsAndWorksPage() {
                 {selectedObject && (
                     <div className="border-t border-gray-300 pt-6">
 
+                        {/* Статус місяця */}
+                        <div className="mb-4 flex items-center gap-2">
+                            <span className="font-semibold">Поточний місяць ({currentMonth}) закрито:</span>
+                            {monthClosed ? (
+                                <span className="text-green-600 font-bold">✔</span>
+                            ) : (
+                                <span className="text-gray-500">—</span>
+                            )}
+                        </div>
+
                         {/* Редагування міста і назви об’єкта */}
                         <div className="mb-4 flex flex-col gap-2">
                             <div className="flex items-center gap-2">
@@ -231,9 +266,9 @@ export default function ObjectsAndWorksPage() {
                                     Зберегти
                                 </button>
                             </div>
-                            
                         </div>
 
+                        {/* Відповідальні */}
                         <div className="mb-4 bg-red-50 p-3 rounded-md border border-red-200">
                             <div className="mb-2">
                                 <span className="font-semibold">Поточні відповідальні:</span>
