@@ -49,6 +49,7 @@ export default function ObjectsAndWorksPage() {
 
     const headers = { Authorization: `Bearer ${getToken()}` };
 
+    // Завантаження даних
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -73,6 +74,7 @@ export default function ObjectsAndWorksPage() {
         fetchData();
     }, []);
 
+    // Статус місяця
     useEffect(() => {
         if (!selectedObject) return;
 
@@ -80,10 +82,7 @@ export default function ObjectsAndWorksPage() {
             try {
                 const res = await axios.get(
                     'https://agricon-backend-1.onrender.com/works/month-status',
-                    {
-                        params: { object: selectedObject, month: currentMonth },
-                        headers
-                    }
+                    { params: { object: selectedObject, month: currentMonth }, headers }
                 );
                 setMonthClosed(res.data.closed);
             } catch (err) {
@@ -98,17 +97,29 @@ export default function ObjectsAndWorksPage() {
     if (loading) return <p className="p-6 text-gray-600">Завантаження...</p>;
     if (error) return <p className="p-6 text-red-600">{error}</p>;
 
+    // Всі міста і об’єкти
     const cities = Array.from(new Set(works.map(w => w.city)));
     const objects = selectedCity
-        ? Array.from(new Set(works.filter(w => w.city === selectedCity).map(w => w.object)))
-        : [];
+        ? Array.from(new Set(works.filter(w => w.city === selectedCity).map(w => w.object))).sort((a, b) => a.localeCompare(b))
+        : Array.from(new Set(works.map(w => w.object))).sort((a, b) => a.localeCompare(b));
+
     const filteredWorks = selectedObject
         ? works.filter(w => w.object === selectedObject)
         : [];
+
     const currentResponsibles = selectedObject
         ? responsibles.find(r => r.objectName === selectedObject)?.responsibles || []
         : [];
 
+    // Обробка вибору міста
+    const handleCitySelect = (city: string) => {
+        setSelectedCity(city || null);
+        setSelectedObject(null);
+        setShowAddForm(false);
+        setMonthClosed(false);
+    };
+
+    // Додавання відповідального
     const handleAddResponsible = async () => {
         if (!selectedObject || !selectedUserId) return;
         try {
@@ -128,6 +139,7 @@ export default function ObjectsAndWorksPage() {
         }
     };
 
+    // Додавання нової роботи
     const handleAddNewWork = async () => {
         if (!selectedObject) return;
         try {
@@ -146,6 +158,7 @@ export default function ObjectsAndWorksPage() {
         }
     };
 
+    // Видалення об’єкта
     const handleDeleteObject = async (objName: string) => {
         if (!confirm(`Видалити об’єкт "${objName}"?`)) return;
         try {
@@ -162,33 +175,35 @@ export default function ObjectsAndWorksPage() {
         <div className="min-h-screen bg-white text-black">
             <Navbar />
             <div className="p-6">
+                {/* Вибір міста */}
                 <h2 className="text-xl font-semibold mb-2">Оберіть місто:</h2>
+                <select
+                    value={selectedCity || ""}
+                    onChange={e => handleCitySelect(e.target.value)}
+                    className="mb-6 border rounded px-2 py-1"
+                >
+                    <option value="">Усі міста</option>
+                    {cities.map(city => <option key={city} value={city}>{city}</option>)}
+                </select>
+
+                {/* Список об’єктів */}
+                <h2 className="text-xl font-semibold mb-2 text-red-700">
+                    {selectedCity ? `Проекти у місті: ${selectedCity}` : 'Всі проекти (відсортовано по алфавіту)'}
+                </h2>
                 <div className="flex flex-wrap gap-2 mb-6">
-                    {cities.map((city, i) => (
-                        <button key={i} onClick={() => { setSelectedCity(city); setSelectedObject(null); }}
-                                className={`px-4 py-2 rounded-md border font-medium transition ${selectedCity === city ? 'bg-red-600 text-white border-red-700' : 'bg-white text-red-600 border-red-600 hover:bg-red-50'}`}>
-                            {city}
+                    {objects.map(obj => (
+                        <button
+                            key={obj}
+                            onClick={() => { setSelectedObject(obj); setShowAddForm(false); setMonthClosed(false); }}
+                            className={`px-4 py-2 rounded-md border font-medium transition ${selectedObject === obj ? 'bg-red-500 text-white border-red-600' : 'bg-white text-red-600 border-red-600 hover:bg-red-50'}`}
+                        >
+                            {obj}
                         </button>
                     ))}
                 </div>
 
-                {selectedCity && (
-                    <>
-                        <h2 className="text-xl font-semibold mb-2 text-red-700">Проекти у місті: {selectedCity}</h2>
-                        <div className="flex flex-wrap gap-2 mb-6">
-                            {objects.map((obj, i) => (
-                                <button key={i} onClick={() => setSelectedObject(obj)}
-                                        className={`px-4 py-2 rounded-md border font-medium transition ${selectedObject === obj ? 'bg-red-500 text-white border-red-600' : 'bg-white text-red-600 border-red-600 hover:bg-red-50'}`}>
-                                    {obj}
-                                </button>
-                            ))}
-                        </div>
-                    </>
-                )}
-
                 {selectedObject && (
                     <div className="border-t border-gray-300 pt-6">
-
                         {/* Статус місяця */}
                         <div className="mb-4 flex items-center gap-2">
                             <span className="font-semibold">Поточний місяць ({currentMonth}) закрито:</span>
@@ -199,7 +214,7 @@ export default function ObjectsAndWorksPage() {
                             )}
                         </div>
 
-                        {/* Редагування міста і назви об’єкта */}
+                        {/* Редагування міста та об’єкта */}
                         <div className="mb-4 flex flex-col gap-2">
                             <div className="flex items-center gap-2">
                                 <span className="font-semibold">Місто:</span>
@@ -329,6 +344,20 @@ export default function ObjectsAndWorksPage() {
                                                         console.error("Помилка оновлення назви для додатку:", err);
                                                     }
                                                 }}
+                                                onKeyDown={async (e) => {
+                                                    if (e.key === 'Enter') {
+                                                        try {
+                                                            await axios.put(
+                                                                `https://agricon-backend-1.onrender.com/works/${work._id}/app-name`,
+                                                                { appName: work.appName || "" },
+                                                                { headers }
+                                                            );
+                                                            e.currentTarget.blur();
+                                                        } catch (err) {
+                                                            console.error("Помилка оновлення назви для додатку:", err);
+                                                        }
+                                                    }
+                                                }}
                                                 className="border px-1 py-0.5 rounded w-full"
                                             />
                                         </td>
@@ -342,7 +371,7 @@ export default function ObjectsAndWorksPage() {
                             </tbody>
                         </table>
 
-                        {/* Кнопка для відкриття форми додавання роботи */}
+                        {/* Кнопка додавання роботи */}
                         <button
                             onClick={() => setShowAddForm(prev => !prev)}
                             className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
