@@ -321,6 +321,7 @@ export default function ObjectsAndWorksPage() {
                                 const remaining = typeof work.volume === "number" && typeof work.done === "number"
                                     ? work.volume - work.done
                                     : 0;
+                                const isOverdone = remaining < 0;
                                 return (
                                     <tr key={work._id || i} className={i % 2 === 0 ? 'bg-white' : 'bg-red-50'}>
                                         <td className="border px-2 py-1">{work.category}</td>
@@ -364,7 +365,9 @@ export default function ObjectsAndWorksPage() {
                                         <td className="border px-2 py-1">{work.unit}</td>
                                         <td className="border px-2 py-1">{Number(work.volume).toFixed(2)}</td>
                                         <td className="border px-2 py-1">{Number(work.done).toFixed(2)}</td>
-                                        <td className="border px-2 py-1">{Number(remaining).toFixed(2)}</td>
+                                        <td className={`border px-2 py-1 ${isOverdone ? 'text-red-600 font-bold' : ''}`}>
+                                            {isOverdone ? <>🔺 {Math.abs(remaining).toFixed(2)}</> : Number(remaining).toFixed(2)}
+                                        </td>
                                     </tr>
                                 );
                             })}

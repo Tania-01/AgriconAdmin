@@ -25,7 +25,9 @@ export default function HomePage() {
         { href: "/reports", title: "Звіти", desc: "Генерація Excel / PDF" },
         { href: "/settings", title: "Налаштування", desc: "Конфігурації системи" },
         { href: "/PhotoReport", title: "Фото-звіти", desc: "Перегляд фото по об’єктах" },
-        { href: "/Project", title: "Додати проект", desc: "Створення нового проекту" }, // <-- нова кнопка
+        { href: "/Project", title: "Додати проект", desc: "Створення нового проекту" },
+        { href: "/month-filled", title: "Хто заповнив", desc: "Перегляд об’єктів, заповнених за місяць" }, // <-- нова вкладка
+// <-- нова кнопка
     ];
 
     return (
