@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Navbar from '../navbar/Navbar';
 
+export type ProjectStatus = 'planned' | 'open' | 'closed';
+
 interface Work {
     _id: string;
     city: string;
@@ -14,6 +16,9 @@ interface Work {
     volume: number;
     done: number;
     appName?: string;
+    objectStatus: ProjectStatus;
+    history: { date: string; amount: number; addedBy: string }[];
+    tempDone?: string; // тимчасове поле для введення кількості
 }
 
 interface User {
@@ -33,20 +38,19 @@ export default function ObjectsAndWorksPage() {
     const [responsibles, setResponsibles] = useState<Responsible[]>([]);
     const [selectedCity, setSelectedCity] = useState<string | null>(null);
     const [selectedObject, setSelectedObject] = useState<string | null>(null);
-    const [selectedUserId, setSelectedUserId] = useState<string>("");
-    const [newWork, setNewWork] = useState({ category: "", name: "", unit: "", volume: "", done: "" });
+    const [selectedUserId, setSelectedUserId] = useState<string>(""); // для додавання відповідального
+    const [selectedWorkerId, setSelectedWorkerId] = useState<string>(""); // для редагування від імені працівника
+    const [newWork, setNewWork] = useState({ category: "", name: "", unit: "", volume: "" });
+
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showAddForm, setShowAddForm] = useState(false);
-    const [monthClosed, setMonthClosed] = useState<boolean>(false);
+    const [monthClosed, setMonthClosed] = useState(false);
+    const [objectStatus, setObjectStatus] = useState<ProjectStatus>('planned');
+    const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
 
     const currentMonth = new Date().toISOString().slice(0, 7);
-
-    const getToken = () => {
-        if (typeof window === 'undefined') return null;
-        return localStorage.getItem('token');
-    };
-
+    const getToken = () => typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const headers = { Authorization: `Bearer ${getToken()}` };
 
     // Завантаження даних
@@ -58,65 +62,85 @@ export default function ObjectsAndWorksPage() {
                     axios.get('https://agricon-backend-1.onrender.com/works/object-responsibles', { headers }),
                     axios.get('https://agricon-backend-1.onrender.com/works/getUser', { headers }),
                 ]);
-
                 setWorks(worksRes.data);
                 setResponsibles(respRes.data);
                 setUsers(usersRes.data);
             } catch (err: any) {
                 console.error('Помилка завантаження даних:', err);
-                if (err.response?.status === 401) setError('Ви не авторизовані. Будь ласка, увійдіть.');
-                else setError('Помилка завантаження даних');
+                setError('Помилка завантаження даних');
             } finally {
                 setLoading(false);
             }
         };
-
         fetchData();
     }, []);
+
+    // Скидання обраного обʼєкта при зміні статусу або міста
+    useEffect(() => {
+        setSelectedObject(null);
+        setShowAddForm(false);
+        setSelectedWorkerId('');
+    }, [statusFilter, selectedCity]);
 
     // Статус місяця
     useEffect(() => {
         if (!selectedObject) return;
-
-        const fetchMonthStatus = async () => {
-            try {
-                const res = await axios.get(
-                    'https://agricon-backend-1.onrender.com/works/month-status',
-                    { params: { object: selectedObject, month: currentMonth }, headers }
-                );
-                setMonthClosed(res.data.closed);
-            } catch (err) {
-                console.error("Помилка отримання статусу місяця:", err);
-                setMonthClosed(false);
-            }
-        };
-
-        fetchMonthStatus();
+        axios.get('https://agricon-backend-1.onrender.com/works/month-status', {
+            params: { object: selectedObject, month: currentMonth }, headers
+        })
+            .then(res => setMonthClosed(res.data.closed))
+            .catch(() => setMonthClosed(false));
     }, [selectedObject, currentMonth]);
+
+    // Статус об'єкту
+    useEffect(() => {
+        if (!selectedObject) return;
+        const work = works.find(w => w.object === selectedObject);
+        if (work) setObjectStatus(work.objectStatus);
+    }, [selectedObject, works]);
 
     if (loading) return <p className="p-6 text-gray-600">Завантаження...</p>;
     if (error) return <p className="p-6 text-red-600">{error}</p>;
 
-    // Всі міста і об’єкти
+    // Список міст та обʼєктів з фільтром по статусу
     const cities = Array.from(new Set(works.map(w => w.city)));
-    const objects = selectedCity
-        ? Array.from(new Set(works.filter(w => w.city === selectedCity).map(w => w.object))).sort((a, b) => a.localeCompare(b))
-        : Array.from(new Set(works.map(w => w.object))).sort((a, b) => a.localeCompare(b));
+    const objects = Array.from(
+        new Set(
+            works
+                .filter(w =>
+                    (!selectedCity || w.city === selectedCity) &&
+                    (statusFilter === 'all' || w.objectStatus === statusFilter)
+                )
+                .map(w => w.object)
+        )
+    ).sort();
 
     const filteredWorks = selectedObject
-        ? works.filter(w => w.object === selectedObject)
+        ? works.filter(
+            w =>
+                w.object === selectedObject &&
+                (statusFilter === 'all' || w.objectStatus === statusFilter)
+        )
         : [];
 
-    const currentResponsibles = selectedObject
-        ? responsibles.find(r => r.objectName === selectedObject)?.responsibles || []
-        : [];
+    const currentResponsibles = responsibles.find(r => r.objectName === selectedObject)?.responsibles || [];
 
-    // Обробка вибору міста
-    const handleCitySelect = (city: string) => {
-        setSelectedCity(city || null);
-        setSelectedObject(null);
-        setShowAddForm(false);
-        setMonthClosed(false);
+    // Додавання нової роботи
+    const handleAddNewWork = async () => {
+        if (!selectedObject) return;
+        try {
+            await axios.post(
+                'https://agricon-backend-1.onrender.com/works/extraWork',
+                { objectName: selectedObject, ...newWork },
+                { headers }
+            );
+            setShowAddForm(false);
+            setNewWork({ category: "", name: "", unit: "", volume: "" });
+            const res = await axios.get('https://agricon-backend-1.onrender.com/works/full-data', { headers });
+            setWorks(res.data);
+        } catch (err) {
+            console.error('Помилка при додаванні роботи:', err);
+        }
     };
 
     // Додавання відповідального
@@ -131,43 +155,53 @@ export default function ObjectsAndWorksPage() {
             setResponsibles(prev => {
                 const exists = prev.find(r => r.objectName === selectedObject);
                 if (exists) return prev.map(r => r.objectName === selectedObject ? res.data : r);
-                else return [...prev, res.data];
+                return [...prev, res.data];
             });
-            setSelectedUserId("");
+            setSelectedUserId('');
         } catch (err) {
             console.error('Помилка додавання відповідального:', err);
         }
     };
 
-    // Додавання нової роботи
-    const handleAddNewWork = async () => {
-        if (!selectedObject) return;
-        try {
-            await axios.post(
-                'https://agricon-backend-1.onrender.com/works/extraWork',
-                { objectName: selectedObject, name: newWork.name, unit: newWork.unit, volume: newWork.volume },
-                { headers }
-            );
-            alert("Роботу успішно додано!");
-            setNewWork({ category: "", name: "", unit: "", volume: "", done: "" });
-            setShowAddForm(false);
-            const res = await axios.get('https://agricon-backend-1.onrender.com/works/full-data', { headers });
-            setWorks(res.data);
-        } catch (err) {
-            console.error('Помилка при додаванні роботи:', err);
-        }
-    };
+    // Збереження всіх введених "додати виконане"
+    const handleSaveDone = async () => {
+        if (!selectedWorkerId) return alert("Оберіть працівника для редагування");
 
-    // Видалення об’єкта
-    const handleDeleteObject = async (objName: string) => {
-        if (!confirm(`Видалити об’єкт "${objName}"?`)) return;
+        const updates = filteredWorks
+            .filter(w => w.tempDone && Number(w.tempDone) > 0)
+            .map(w => ({ id: w._id, doneAmount: Number(w.tempDone) }));
+
         try {
-            await axios.delete(`https://agricon-backend-1.onrender.com/works/object/${encodeURIComponent(objName)}`, { headers });
-            const res = await axios.get('https://agricon-backend-1.onrender.com/works/full-data', { headers });
-            setWorks(res.data);
-            if (selectedObject === objName) setSelectedObject(null);
+            await Promise.all(
+                updates.map(u =>
+                    axios.put(
+                        `https://agricon-backend-1.onrender.com/works/works/${u.id}/manager-update`,
+                        { doneAmount: u.doneAmount, addedByWorkerId: selectedWorkerId },
+                        { headers }
+                    )
+                )
+            );
+
+            // Оновлюємо локально стан
+            setWorks(prev =>
+                prev.map(w => {
+                    const update = updates.find(u => u.id === w._id);
+                    if (update) {
+                        return {
+                            ...w,
+                            done: w.done + update.doneAmount,
+                            history: [...w.history, { date: new Date().toISOString(), amount: update.doneAmount, addedBy: selectedWorkerId }],
+                            tempDone: ""
+                        };
+                    }
+                    return w;
+                })
+            );
+
+            alert("Виконане збережено");
         } catch (err) {
-            console.error('Помилка видалення об’єкта:', err);
+            console.error(err);
+            alert("Помилка при збереженні виконаного");
         }
     };
 
@@ -179,22 +213,32 @@ export default function ObjectsAndWorksPage() {
                 <h2 className="text-xl font-semibold mb-2">Оберіть місто:</h2>
                 <select
                     value={selectedCity || ""}
-                    onChange={e => handleCitySelect(e.target.value)}
+                    onChange={e => { setSelectedCity(e.target.value || null); }}
                     className="mb-6 border rounded px-2 py-1"
                 >
                     <option value="">Усі міста</option>
                     {cities.map(city => <option key={city} value={city}>{city}</option>)}
                 </select>
 
-                {/* Список об’єктів */}
-                <h2 className="text-xl font-semibold mb-2 text-red-700">
-                    {selectedCity ? `Проекти у місті: ${selectedCity}` : 'Всі проекти (відсортовано по алфавіту)'}
-                </h2>
+                {/* Фільтр по статусу */}
+                <div className="flex gap-2 mb-4">
+                    {['all', 'planned', 'open', 'closed'].map(status => (
+                        <button
+                            key={status}
+                            onClick={() => setStatusFilter(status as ProjectStatus | 'all')}
+                            className={`px-3 py-1 rounded border ${statusFilter === status ? 'bg-red-500 text-white border-red-600' : 'bg-white text-red-600 border-red-600 hover:bg-red-50'}`}
+                        >
+                            {status === 'all' ? 'Усі' : status === 'planned' ? 'Плановий' : status === 'open' ? 'Відкритий' : 'Закритий'}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Об'єкти */}
                 <div className="flex flex-wrap gap-2 mb-6">
                     {objects.map(obj => (
                         <button
                             key={obj}
-                            onClick={() => { setSelectedObject(obj); setShowAddForm(false); setMonthClosed(false); }}
+                            onClick={() => { setSelectedObject(obj); setShowAddForm(false); setSelectedWorkerId(''); }}
                             className={`px-4 py-2 rounded-md border font-medium transition ${selectedObject === obj ? 'bg-red-500 text-white border-red-600' : 'bg-white text-red-600 border-red-600 hover:bg-red-50'}`}
                         >
                             {obj}
@@ -204,103 +248,52 @@ export default function ObjectsAndWorksPage() {
 
                 {selectedObject && (
                     <div className="border-t border-gray-300 pt-6">
-                        {/* Статус місяця */}
-                        <div className="mb-4 flex items-center gap-2">
-                            <span className="font-semibold">Поточний місяць ({currentMonth}) закрито:</span>
-                            {monthClosed ? (
-                                <span className="text-green-600 font-bold">✔</span>
-                            ) : (
-                                <span className="text-gray-500">—</span>
-                            )}
+                        {/* Статус об'єкту та місяця */}
+                        <div className="mb-4 flex items-center gap-4">
+                            <span className="font-semibold">Статус проєкту:</span>
+                            <select
+                                value={objectStatus}
+                                onChange={async e => {
+                                    if (!selectedObject) return;
+                                    const newStatus = e.target.value as ProjectStatus;
+                                    try {
+                                        await axios.put(
+                                            `https://agricon-backend-1.onrender.com/works/works/object/status`,
+                                            { objectName: selectedObject, status: newStatus },
+                                            { headers }
+                                        );
+                                        setWorks(prev => prev.map(w =>
+                                            w.object === selectedObject ? { ...w, objectStatus: newStatus } : w
+                                        ));
+                                        setObjectStatus(newStatus);
+                                    } catch (err) {
+                                        console.error("Помилка при оновленні статусу:", err);
+                                    }
+                                }}
+                                className="border px-2 py-1 rounded"
+                            >
+                                <option value="planned">Плановий</option>
+                                <option value="open">Відкритий</option>
+                                <option value="closed">Закритий</option>
+                            </select>
+                            <span>
+                                Місяць закрито: {monthClosed ? <span className="text-green-600 font-bold">✔</span> : '—'}
+                            </span>
                         </div>
 
-                        {/* Редагування міста та об’єкта */}
-                        <div className="mb-4 flex flex-col gap-2">
-                            <div className="flex items-center gap-2">
-                                <span className="font-semibold">Місто:</span>
-                                <input
-                                    type="text"
-                                    value={selectedCity || ""}
-                                    onChange={e => setSelectedCity(e.target.value)}
-                                    className="border px-2 py-1 rounded w-64"
-                                />
-                                <button
-                                    onClick={async () => {
-                                        try {
-                                            await Promise.all(
-                                                filteredWorks.map(work =>
-                                                    axios.put(
-                                                        `https://agricon-backend-1.onrender.com/works/update-city/${work._id}`,
-                                                        { city: selectedCity },
-                                                        { headers }
-                                                    )
-                                                )
-                                            );
-                                            alert("Місто успішно оновлено!");
-                                            const res = await axios.get('https://agricon-backend-1.onrender.com/works/full-data', { headers });
-                                            setWorks(res.data);
-                                        } catch (err) {
-                                            console.error("Помилка оновлення міста:", err);
-                                        }
-                                    }}
-                                    className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition"
-                                >
-                                    Зберегти
-                                </button>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <span className="font-semibold">Об’єкт:</span>
-                                <input
-                                    type="text"
-                                    value={selectedObject}
-                                    onChange={e => setSelectedObject(e.target.value)}
-                                    className="border px-2 py-1 rounded w-64"
-                                />
-                                <button
-                                    onClick={async () => {
-                                        try {
-                                            await Promise.all(
-                                                filteredWorks.map(work =>
-                                                    axios.put(
-                                                        `https://agricon-backend-1.onrender.com/works/update-object/${work._id}`,
-                                                        { object: selectedObject },
-                                                        { headers }
-                                                    )
-                                                )
-                                            );
-                                            alert("Назву об’єкта успішно оновлено!");
-                                            const res = await axios.get('https://agricon-backend-1.onrender.com/works/full-data', { headers });
-                                            setWorks(res.data);
-                                        } catch (err) {
-                                            console.error("Помилка оновлення об’єкта:", err);
-                                        }
-                                    }}
-                                    className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition"
-                                >
-                                    Зберегти
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Відповідальні */}
-                        <div className="mb-4 bg-red-50 p-3 rounded-md border border-red-200">
-                            <div className="mb-2">
-                                <span className="font-semibold">Поточні відповідальні:</span>
-                                {currentResponsibles.length > 0 ? (
-                                    <ul className="list-disc list-inside ml-4 text-sm">
-                                        {currentResponsibles.map(u => <li key={u._id}>{u.name} <span className="text-gray-600">({u.email})</span></li>)}
-                                    </ul>
-                                ) : <span className="font-semibold text-gray-600"> не вказано</span>}
-                            </div>
-                            <div className="flex gap-2">
-                                <select value={selectedUserId} onChange={e => setSelectedUserId(e.target.value)}
-                                        className="border border-red-400 px-2 py-1 rounded-md w-64 focus:outline-none focus:ring-2 focus:ring-red-400">
-                                    <option value="">Оберіть користувача</option>
-                                    {users.map(u => <option key={u._id} value={u._id}>{u.name} ({u.email})</option>)}
-                                </select>
-                                <button onClick={handleAddResponsible} className="bg-red-600 text-white px-4 py-1 rounded-md hover:bg-red-700 transition">Додати</button>
-                            </div>
+                        {/* Вибір працівника для редагування */}
+                        <div className="mb-4 flex gap-2 items-center">
+                            <span className="font-semibold">Від імені працівника:</span>
+                            <select
+                                value={selectedWorkerId}
+                                onChange={e => setSelectedWorkerId(e.target.value)}
+                                className="border border-red-400 px-2 py-1 rounded-md w-64 focus:outline-none focus:ring-2 focus:ring-red-400"
+                            >
+                                <option value="">Оберіть працівника</option>
+                                {currentResponsibles.map(u => (
+                                    <option key={u._id} value={u._id}>{u.name} ({u.email})</option>
+                                ))}
+                            </select>
                         </div>
 
                         {/* Таблиця робіт */}
@@ -313,15 +306,15 @@ export default function ObjectsAndWorksPage() {
                                 <th className="border px-2 py-1">Одиниця</th>
                                 <th className="border px-2 py-1">Обсяг</th>
                                 <th className="border px-2 py-1">Виконано</th>
+                                <th className="border px-2 py-1">Додати виконане</th>
                                 <th className="border px-2 py-1">Залишок</th>
                             </tr>
                             </thead>
                             <tbody>
                             {filteredWorks.map((work, i) => {
-                                const remaining = typeof work.volume === "number" && typeof work.done === "number"
-                                    ? work.volume - work.done
-                                    : 0;
+                                const remaining = (work.volume || 0) - (work.done || 0);
                                 const isOverdone = remaining < 0;
+
                                 return (
                                     <tr key={work._id || i} className={i % 2 === 0 ? 'bg-white' : 'bg-red-50'}>
                                         <td className="border px-2 py-1">{work.category}</td>
@@ -330,41 +323,21 @@ export default function ObjectsAndWorksPage() {
                                             <input
                                                 type="text"
                                                 value={work.appName || ""}
-                                                onChange={e => {
-                                                    const value = e.target.value;
-                                                    setWorks(prev => prev.map(w => w._id === work._id ? { ...w, appName: value } : w));
-                                                }}
-                                                onBlur={async () => {
-                                                    try {
-                                                        await axios.put(
-                                                            `https://agricon-backend-1.onrender.com/works/${work._id}/app-name`,
-                                                            { appName: work.appName || "" },
-                                                            { headers }
-                                                        );
-                                                    } catch (err) {
-                                                        console.error("Помилка оновлення назви для додатку:", err);
-                                                    }
-                                                }}
-                                                onKeyDown={async (e) => {
-                                                    if (e.key === 'Enter') {
-                                                        try {
-                                                            await axios.put(
-                                                                `https://agricon-backend-1.onrender.com/works/${work._id}/app-name`,
-                                                                { appName: work.appName || "" },
-                                                                { headers }
-                                                            );
-                                                            e.currentTarget.blur();
-                                                        } catch (err) {
-                                                            console.error("Помилка оновлення назви для додатку:", err);
-                                                        }
-                                                    }
-                                                }}
+                                                onChange={e => setWorks(prev => prev.map(w => w._id === work._id ? { ...w, appName: e.target.value } : w))}
                                                 className="border px-1 py-0.5 rounded w-full"
                                             />
                                         </td>
                                         <td className="border px-2 py-1">{work.unit}</td>
                                         <td className="border px-2 py-1">{Number(work.volume).toFixed(2)}</td>
                                         <td className="border px-2 py-1">{Number(work.done).toFixed(2)}</td>
+                                        <td className="border px-2 py-1">
+                                            <input
+                                                type="number"
+                                                value={work.tempDone || ""}
+                                                onChange={e => setWorks(prev => prev.map(w => w._id === work._id ? { ...w, tempDone: e.target.value } : w))}
+                                                className="border px-1 py-0.5 rounded w-20"
+                                            />
+                                        </td>
                                         <td className={`border px-2 py-1 ${isOverdone ? 'text-red-600 font-bold' : ''}`}>
                                             {isOverdone ? <>🔺 {Math.abs(remaining).toFixed(2)}</> : Number(remaining).toFixed(2)}
                                         </td>
@@ -374,48 +347,38 @@ export default function ObjectsAndWorksPage() {
                             </tbody>
                         </table>
 
-                        {/* Кнопка додавання роботи */}
+                        {/* Кнопка зберегти введене виконане */}
+                        <button
+                            onClick={handleSaveDone}
+                            className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+                        >
+                            Зберегти виконане
+                        </button>
+
+                        {/* Додати нову роботу */}
                         <button
                             onClick={() => setShowAddForm(prev => !prev)}
-                            className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
+                            className="mt-4 ml-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
                         >
                             {showAddForm ? "Скасувати" : "Додати нову роботу"}
                         </button>
 
                         {showAddForm && (
                             <div className="mt-4 p-4 border border-red-200 rounded bg-red-50 max-w-lg">
-                                <input
-                                    type="text"
-                                    placeholder="Категорія"
-                                    value={newWork.category}
-                                    onChange={e => setNewWork(prev => ({ ...prev, category: e.target.value }))}
-                                    className="w-full mb-2 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-red-400"
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Назва роботи"
-                                    value={newWork.name}
-                                    onChange={e => setNewWork(prev => ({ ...prev, name: e.target.value }))}
-                                    className="w-full mb-2 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-red-400"
-                                />
-                                <input
-                                    type="text"
-                                    placeholder="Одиниця"
-                                    value={newWork.unit}
-                                    onChange={e => setNewWork(prev => ({ ...prev, unit: e.target.value }))}
-                                    className="w-full mb-2 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-red-400"
-                                />
-                                <input
-                                    type="number"
-                                    placeholder="Обсяг"
-                                    value={newWork.volume}
-                                    onChange={e => setNewWork(prev => ({ ...prev, volume: e.target.value }))}
-                                    className="w-full mb-2 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-red-400"
-                                />
-                                <button
-                                    onClick={handleAddNewWork}
-                                    className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
-                                >
+                                <input type="text" placeholder="Категорія" value={newWork.category}
+                                       onChange={e => setNewWork(prev => ({ ...prev, category: e.target.value }))}
+                                       className="w-full mb-2 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-red-400"/>
+                                <input type="text" placeholder="Назва роботи" value={newWork.name}
+                                       onChange={e => setNewWork(prev => ({ ...prev, name: e.target.value }))}
+                                       className="w-full mb-2 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-red-400"/>
+                                <input type="text" placeholder="Одиниця" value={newWork.unit}
+                                       onChange={e => setNewWork(prev => ({ ...prev, unit: e.target.value }))}
+                                       className="w-full mb-2 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-red-400"/>
+                                <input type="number" placeholder="Обсяг" value={newWork.volume}
+                                       onChange={e => setNewWork(prev => ({ ...prev, volume: e.target.value }))}
+                                       className="w-full mb-2 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-red-400"/>
+                                <button onClick={handleAddNewWork}
+                                        className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
                                     Додати
                                 </button>
                             </div>
