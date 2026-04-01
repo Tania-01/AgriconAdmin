@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Navbar from '../navbar/Navbar';
 
-export type ProjectStatus = 'planned' | 'open' | 'closed';
+export type ProjectStatus =  'open' | 'closed';
 
 interface Work {
     _id: string;
@@ -18,7 +18,7 @@ interface Work {
     appName?: string;
     objectStatus: ProjectStatus;
     history: { date: string; amount: number; addedBy: string }[];
-    tempDone?: string; // тимчасове поле для введення кількості
+    tempDone?: string;
 }
 
 interface User {
@@ -38,22 +38,21 @@ export default function ObjectsAndWorksPage() {
     const [responsibles, setResponsibles] = useState<Responsible[]>([]);
     const [selectedCity, setSelectedCity] = useState<string | null>(null);
     const [selectedObject, setSelectedObject] = useState<string | null>(null);
-    const [selectedUserId, setSelectedUserId] = useState<string>(""); // для додавання відповідального
-    const [selectedWorkerId, setSelectedWorkerId] = useState<string>(""); // для редагування від імені працівника
+    const [selectedUserId, setSelectedUserId] = useState<string>("");
+    const [selectedWorkerId, setSelectedWorkerId] = useState<string>("");
     const [newWork, setNewWork] = useState({ category: "", name: "", unit: "", volume: "" });
 
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showAddForm, setShowAddForm] = useState(false);
     const [monthClosed, setMonthClosed] = useState(false);
-    const [objectStatus, setObjectStatus] = useState<ProjectStatus>('planned');
+    const [objectStatus, setObjectStatus] = useState<ProjectStatus>('open');
     const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
 
     const currentMonth = new Date().toISOString().slice(0, 7);
     const getToken = () => typeof window !== 'undefined' ? localStorage.getItem('token') : null;
     const headers = { Authorization: `Bearer ${getToken()}` };
 
-    // Завантаження даних
     useEffect(() => {
         const fetchData = async () => {
             try {
@@ -75,14 +74,12 @@ export default function ObjectsAndWorksPage() {
         fetchData();
     }, []);
 
-    // Скидання обраного обʼєкта при зміні статусу або міста
     useEffect(() => {
         setSelectedObject(null);
         setShowAddForm(false);
         setSelectedWorkerId('');
     }, [statusFilter, selectedCity]);
 
-    // Статус місяця
     useEffect(() => {
         if (!selectedObject) return;
         axios.get('https://agricon-backend-1.onrender.com/works/month-status', {
@@ -92,7 +89,6 @@ export default function ObjectsAndWorksPage() {
             .catch(() => setMonthClosed(false));
     }, [selectedObject, currentMonth]);
 
-    // Статус об'єкту
     useEffect(() => {
         if (!selectedObject) return;
         const work = works.find(w => w.object === selectedObject);
@@ -102,8 +98,8 @@ export default function ObjectsAndWorksPage() {
     if (loading) return <p className="p-6 text-gray-600">Завантаження...</p>;
     if (error) return <p className="p-6 text-red-600">{error}</p>;
 
-    // Список міст та обʼєктів з фільтром по статусу
     const cities = Array.from(new Set(works.map(w => w.city)));
+
     const objects = Array.from(
         new Set(
             works
@@ -123,9 +119,9 @@ export default function ObjectsAndWorksPage() {
         )
         : [];
 
-    const currentResponsibles = responsibles.find(r => r.objectName === selectedObject)?.responsibles || [];
+    const currentResponsibles =
+        responsibles.find(r => r.objectName === selectedObject)?.responsibles || [];
 
-    // Додавання нової роботи
     const handleAddNewWork = async () => {
         if (!selectedObject) return;
         try {
@@ -143,27 +139,6 @@ export default function ObjectsAndWorksPage() {
         }
     };
 
-    // Додавання відповідального
-    const handleAddResponsible = async () => {
-        if (!selectedObject || !selectedUserId) return;
-        try {
-            const res = await axios.post(
-                'https://agricon-backend-1.onrender.com/works/respons',
-                { objectName: selectedObject, userId: selectedUserId },
-                { headers }
-            );
-            setResponsibles(prev => {
-                const exists = prev.find(r => r.objectName === selectedObject);
-                if (exists) return prev.map(r => r.objectName === selectedObject ? res.data : r);
-                return [...prev, res.data];
-            });
-            setSelectedUserId('');
-        } catch (err) {
-            console.error('Помилка додавання відповідального:', err);
-        }
-    };
-
-    // Збереження всіх введених "додати виконане"
     const handleSaveDone = async () => {
         if (!selectedWorkerId) return alert("Оберіть працівника для редагування");
 
@@ -182,7 +157,6 @@ export default function ObjectsAndWorksPage() {
                 )
             );
 
-            // Оновлюємо локально стан
             setWorks(prev =>
                 prev.map(w => {
                     const update = updates.find(u => u.id === w._id);
@@ -209,7 +183,7 @@ export default function ObjectsAndWorksPage() {
         <div className="min-h-screen bg-white text-black">
             <Navbar />
             <div className="p-6">
-                {/* Вибір міста */}
+
                 <h2 className="text-xl font-semibold mb-2">Оберіть місто:</h2>
                 <select
                     value={selectedCity || ""}
@@ -220,26 +194,29 @@ export default function ObjectsAndWorksPage() {
                     {cities.map(city => <option key={city} value={city}>{city}</option>)}
                 </select>
 
-                {/* Фільтр по статусу */}
                 <div className="flex gap-2 mb-4">
-                    {['all', 'planned', 'open', 'closed'].map(status => (
+                    {['all', 'open', 'closed'].map(status => (
                         <button
                             key={status}
                             onClick={() => setStatusFilter(status as ProjectStatus | 'all')}
                             className={`px-3 py-1 rounded border ${statusFilter === status ? 'bg-red-500 text-white border-red-600' : 'bg-white text-red-600 border-red-600 hover:bg-red-50'}`}
                         >
-                            {status === 'all' ? 'Усі' : status === 'planned' ? 'Плановий' : status === 'open' ? 'Відкритий' : 'Закритий'}
+                            {status === 'all' ? 'Усі'  : status === 'open' ? 'Відкритий' : 'Закритий'}
                         </button>
                     ))}
                 </div>
 
-                {/* Об'єкти */}
-                <div className="flex flex-wrap gap-2 mb-6">
+                {/* 🔥 ЄДИНА ЗМІНА */}
+                <div className="grid grid-flow-col grid-rows-5 gap-3 mb-6 overflow-x-auto">
                     {objects.map(obj => (
                         <button
                             key={obj}
                             onClick={() => { setSelectedObject(obj); setShowAddForm(false); setSelectedWorkerId(''); }}
-                            className={`px-4 py-2 rounded-md border font-medium transition ${selectedObject === obj ? 'bg-red-500 text-white border-red-600' : 'bg-white text-red-600 border-red-600 hover:bg-red-50'}`}
+                            className={`px-4 py-2 rounded-md border font-medium transition whitespace-nowrap ${
+                                selectedObject === obj
+                                    ? 'bg-red-500 text-white border-red-600'
+                                    : 'bg-white text-red-600 border-red-600 hover:bg-red-50'
+                            }`}
                         >
                             {obj}
                         </button>
@@ -248,31 +225,25 @@ export default function ObjectsAndWorksPage() {
 
                 {selectedObject && (
                     <div className="border-t border-gray-300 pt-6">
-                        {/* Статус об'єкту та місяця */}
+
                         <div className="mb-4 flex items-center gap-4">
                             <span className="font-semibold">Статус проєкту:</span>
                             <select
                                 value={objectStatus}
                                 onChange={async e => {
-                                    if (!selectedObject) return;
                                     const newStatus = e.target.value as ProjectStatus;
-                                    try {
-                                        await axios.put(
-                                            `https://agricon-backend-1.onrender.com/works/works/object/status`,
-                                            { objectName: selectedObject, status: newStatus },
-                                            { headers }
-                                        );
-                                        setWorks(prev => prev.map(w =>
-                                            w.object === selectedObject ? { ...w, objectStatus: newStatus } : w
-                                        ));
-                                        setObjectStatus(newStatus);
-                                    } catch (err) {
-                                        console.error("Помилка при оновленні статусу:", err);
-                                    }
+                                    await axios.put(
+                                        `https://agricon-backend-1.onrender.com/works/works/object/status`,
+                                        { objectName: selectedObject, status: newStatus },
+                                        { headers }
+                                    );
+                                    setWorks(prev => prev.map(w =>
+                                        w.object === selectedObject ? { ...w, objectStatus: newStatus } : w
+                                    ));
+                                    setObjectStatus(newStatus);
                                 }}
                                 className="border px-2 py-1 rounded"
                             >
-                                <option value="planned">Плановий</option>
                                 <option value="open">Відкритий</option>
                                 <option value="closed">Закритий</option>
                             </select>
@@ -281,13 +252,12 @@ export default function ObjectsAndWorksPage() {
                             </span>
                         </div>
 
-                        {/* Вибір працівника для редагування */}
                         <div className="mb-4 flex gap-2 items-center">
                             <span className="font-semibold">Від імені працівника:</span>
                             <select
                                 value={selectedWorkerId}
                                 onChange={e => setSelectedWorkerId(e.target.value)}
-                                className="border border-red-400 px-2 py-1 rounded-md w-64 focus:outline-none focus:ring-2 focus:ring-red-400"
+                                className="border border-red-400 px-2 py-1 rounded-md w-64"
                             >
                                 <option value="">Оберіть працівника</option>
                                 {currentResponsibles.map(u => (
@@ -296,7 +266,6 @@ export default function ObjectsAndWorksPage() {
                             </select>
                         </div>
 
-                        {/* Таблиця робіт */}
                         <table className="w-full border border-red-300 shadow-sm">
                             <thead className="bg-red-600 text-white">
                             <tr>
@@ -347,7 +316,6 @@ export default function ObjectsAndWorksPage() {
                             </tbody>
                         </table>
 
-                        {/* Кнопка зберегти введене виконане */}
                         <button
                             onClick={handleSaveDone}
                             className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
@@ -355,7 +323,6 @@ export default function ObjectsAndWorksPage() {
                             Зберегти виконане
                         </button>
 
-                        {/* Додати нову роботу */}
                         <button
                             onClick={() => setShowAddForm(prev => !prev)}
                             className="mt-4 ml-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition"
@@ -367,16 +334,16 @@ export default function ObjectsAndWorksPage() {
                             <div className="mt-4 p-4 border border-red-200 rounded bg-red-50 max-w-lg">
                                 <input type="text" placeholder="Категорія" value={newWork.category}
                                        onChange={e => setNewWork(prev => ({ ...prev, category: e.target.value }))}
-                                       className="w-full mb-2 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-red-400"/>
+                                       className="w-full mb-2 px-2 py-1 border rounded"/>
                                 <input type="text" placeholder="Назва роботи" value={newWork.name}
                                        onChange={e => setNewWork(prev => ({ ...prev, name: e.target.value }))}
-                                       className="w-full mb-2 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-red-400"/>
+                                       className="w-full mb-2 px-2 py-1 border rounded"/>
                                 <input type="text" placeholder="Одиниця" value={newWork.unit}
                                        onChange={e => setNewWork(prev => ({ ...prev, unit: e.target.value }))}
-                                       className="w-full mb-2 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-red-400"/>
+                                       className="w-full mb-2 px-2 py-1 border rounded"/>
                                 <input type="number" placeholder="Обсяг" value={newWork.volume}
                                        onChange={e => setNewWork(prev => ({ ...prev, volume: e.target.value }))}
-                                       className="w-full mb-2 px-2 py-1 border rounded focus:outline-none focus:ring-2 focus:ring-red-400"/>
+                                       className="w-full mb-2 px-2 py-1 border rounded"/>
                                 <button onClick={handleAddNewWork}
                                         className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700 transition">
                                     Додати
