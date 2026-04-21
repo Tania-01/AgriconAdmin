@@ -183,7 +183,7 @@ export default function ObjectsAndWorksPage() {
         <div className="min-h-screen bg-white text-black">
             <Navbar />
             <div className="p-6">
-                <h2 className="text-xl font-semibold mb-2">Пошук об'єкта:</h2>
+                <h2 className="text-xl font-semibold mb-2">Пошук об&apos;єкта:</h2>
                 <input
                     type="text"
                     placeholder="Введіть назву об'єкта"
