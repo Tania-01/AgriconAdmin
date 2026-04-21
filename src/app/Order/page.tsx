@@ -247,7 +247,7 @@ export default function AdminOrdersPage() {
 
                             <div className="grid grid-cols-2 gap-2 mb-4 text-sm">
                                 <div><b>Замовник:</b> {opened.customer?.name || "—"}</div>
-                                <div><b>Об'єкт:</b> {opened.object?.object}</div>
+                                <div><b>Об’єкт:</b> {opened.object?.object}</div>
                                 <div><b>Місто:</b> {opened.object?.city}</div>
                                 <div><b>Дата:</b> {opened.createdAt?.slice(0,10)}</div>
                                 <div><b>Поставка:</b> {opened.deliveryDate?.slice(0,10)}</div>
