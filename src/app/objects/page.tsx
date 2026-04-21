@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import Navbar from '../navbar/Navbar';
 
-export type ProjectStatus =  'open' | 'closed';
+export type ProjectStatus = 'open' | 'closed';
 
 interface Work {
     _id: string;
@@ -38,16 +38,15 @@ export default function ObjectsAndWorksPage() {
     const [responsibles, setResponsibles] = useState<Responsible[]>([]);
     const [selectedCity, setSelectedCity] = useState<string | null>(null);
     const [selectedObject, setSelectedObject] = useState<string | null>(null);
-    const [selectedUserId, setSelectedUserId] = useState<string>("");
     const [selectedWorkerId, setSelectedWorkerId] = useState<string>("");
     const [newWork, setNewWork] = useState({ category: "", name: "", unit: "", volume: "" });
-
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [showAddForm, setShowAddForm] = useState(false);
     const [monthClosed, setMonthClosed] = useState(false);
     const [objectStatus, setObjectStatus] = useState<ProjectStatus>('open');
     const [statusFilter, setStatusFilter] = useState<ProjectStatus | 'all'>('all');
+    const [searchTerm, setSearchTerm] = useState('');
 
     const currentMonth = new Date().toISOString().slice(0, 7);
     const getToken = () => typeof window !== 'undefined' ? localStorage.getItem('token') : null;
@@ -105,7 +104,8 @@ export default function ObjectsAndWorksPage() {
             works
                 .filter(w =>
                     (!selectedCity || w.city === selectedCity) &&
-                    (statusFilter === 'all' || w.objectStatus === statusFilter)
+                    (statusFilter === 'all' || w.objectStatus === statusFilter) &&
+                    (w.object.toLowerCase().includes(searchTerm.toLowerCase()))
                 )
                 .map(w => w.object)
         )
@@ -183,12 +183,20 @@ export default function ObjectsAndWorksPage() {
         <div className="min-h-screen bg-white text-black">
             <Navbar />
             <div className="p-6">
+                <h2 className="text-xl font-semibold mb-2">Пошук об'єкта:</h2>
+                <input
+                    type="text"
+                    placeholder="Введіть назву об'єкта"
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="mb-4 border rounded px-2 py-1 w-64"
+                />
 
                 <h2 className="text-xl font-semibold mb-2">Оберіть місто:</h2>
                 <select
                     value={selectedCity || ""}
                     onChange={e => { setSelectedCity(e.target.value || null); }}
-                    className="mb-6 border rounded px-2 py-1"
+                    className="mb-4 border rounded px-2 py-1"
                 >
                     <option value="">Усі міста</option>
                     {cities.map(city => <option key={city} value={city}>{city}</option>)}
@@ -199,20 +207,19 @@ export default function ObjectsAndWorksPage() {
                         <button
                             key={status}
                             onClick={() => setStatusFilter(status as ProjectStatus | 'all')}
-                            className={`px-3 py-1 rounded border ${statusFilter === status ? 'bg-red-500 text-white border-red-600' : 'bg-white text-red-600 border-red-600 hover:bg-red-50'}`}
+                            className={`px-2 py-1 rounded border text-sm ${statusFilter === status ? 'bg-red-500 text-white border-red-600' : 'bg-white text-red-600 border-red-600 hover:bg-red-50'}`}
                         >
                             {status === 'all' ? 'Усі'  : status === 'open' ? 'Відкритий' : 'Закритий'}
                         </button>
                     ))}
                 </div>
 
-                {/* 🔥 ЄДИНА ЗМІНА */}
-                <div className="grid grid-flow-col grid-rows-5 gap-3 mb-6 overflow-x-auto">
+                <div className="grid grid-flow-col grid-rows-5 gap-2 mb-4 overflow-x-auto">
                     {objects.map(obj => (
                         <button
                             key={obj}
                             onClick={() => { setSelectedObject(obj); setShowAddForm(false); setSelectedWorkerId(''); }}
-                            className={`px-4 py-2 rounded-md border font-medium transition whitespace-nowrap ${
+                            className={`px-3 py-1 rounded-md border font-medium text-sm transition whitespace-nowrap ${
                                 selectedObject === obj
                                     ? 'bg-red-500 text-white border-red-600'
                                     : 'bg-white text-red-600 border-red-600 hover:bg-red-50'
@@ -260,13 +267,13 @@ export default function ObjectsAndWorksPage() {
                                 className="border border-red-400 px-2 py-1 rounded-md w-64"
                             >
                                 <option value="">Оберіть працівника</option>
-                                {currentResponsibles.map(u => (
+                                {responsibles.find(r => r.objectName === selectedObject)?.responsibles.map(u => (
                                     <option key={u._id} value={u._id}>{u.name} ({u.email})</option>
                                 ))}
                             </select>
                         </div>
 
-                        <table className="w-full border border-red-300 shadow-sm">
+                        <table className="w-full border border-red-300 shadow-sm text-left">
                             <thead className="bg-red-600 text-white">
                             <tr>
                                 <th className="border px-2 py-1">Категорія</th>
