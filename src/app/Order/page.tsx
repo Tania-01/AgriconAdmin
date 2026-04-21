@@ -52,7 +52,6 @@ export default function AdminOrdersPage() {
         Authorization: `Bearer ${getToken()}`,
     };
 
-    // ================= TOKEN CHECK =================
     useEffect(() => {
         if (!getToken()) {
             window.location.href = "/login";
@@ -74,7 +73,6 @@ export default function AdminOrdersPage() {
         setWorks(res.data || []);
     };
 
-    // ================= STATUS =================
     const calcStatus = (rows: Row[]) => {
         let total = 0;
         let done = 0;
@@ -99,7 +97,6 @@ export default function AdminOrdersPage() {
     const getDelivered = (r: Row) =>
         r.deliveries?.reduce((s, d) => s + d.qty, 0) || 0;
 
-    // ================= GROUPS =================
     const groupsForObject = useMemo(() => {
         if (!opened?.object?.object) return [];
 
@@ -113,7 +110,6 @@ export default function AdminOrdersPage() {
         ];
     }, [works, opened]);
 
-    // ================= UPDATE =================
     const updateRow = (i: number, value: string) => {
         if (!opened) return;
         const rows = [...opened.rows];
@@ -174,13 +170,10 @@ export default function AdminOrdersPage() {
     const columns = ["нове", "в процесі", "частково виконано", "виконано"];
 
     return (
-        <div className="min-h-screen bg-white text-black">
-
-            {/* HEADER */}
+        <div className="min-h-screen bg-white text-black w-full overflow-x-hidden">
             <Navbar />
 
-            <div className="p-6">
-                
+            <div className="p-6 w-full">
 
                 <h1 className="text-xl font-semibold mb-4">
                     Замовлення
@@ -204,13 +197,13 @@ export default function AdminOrdersPage() {
                     </select>
                 </div>
 
-                {/* BOARD */}
-                <div className="grid grid-flow-col auto-cols-[280px] gap-4 overflow-x-auto pb-4">
+                {/* ================= BOARD (FIXED % LAYOUT) ================= */}
+                <div className="flex gap-[2%] overflow-x-auto pb-4 w-full">
 
                     {columns.map(col => (
                         <div
                             key={col}
-                            className="w-[280px] bg-red-50 border border-red-200 rounded-lg p-3"
+                            className="w-[23%] min-w-[240px] flex-shrink-0 bg-red-50 border border-red-200 rounded-lg p-3"
                         >
                             <h3 className="font-semibold text-red-600 mb-3">
                                 {col}
@@ -237,7 +230,7 @@ export default function AdminOrdersPage() {
 
                 </div>
 
-                {/* MODAL (UNCHANGED) */}
+                {/* ================= MODAL (UNCHANGED) ================= */}
                 {opened && (
                     <div className="fixed inset-0 bg-black/60 flex justify-center items-center z-50">
                         <div className="bg-white w-[1000px] rounded-xl p-6 shadow-xl">
